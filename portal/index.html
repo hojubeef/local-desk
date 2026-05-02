@@ -596,6 +596,25 @@
             </div>
             <pre class="git-output large" id="gitActionOutput">아직 실행한 작업이 없습니다.</pre>
           </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">Guide</p>
+                <h2>새 PC 세팅</h2>
+              </div>
+            </div>
+            <p class="hint">clone 후 아래 파일들은 Git에 안 올라가므로 직접 설정해야 합니다.</p>
+            <div class="git-setup-list">
+              <p><strong>1. KOSIS API 키</strong><br>
+              <code>apps/kosis/config.example.py</code> &rarr; <code>apps/kosis/config.py</code>로 복사 후 API 키 입력</p>
+              <p><strong>2. Google Calendar</strong><br>
+              Google OAuth JSON 파일을 <code>local/secrets/google-calendar-credentials.json</code>에 저장<br>
+              달력 화면에서 '연결' 누르면 토큰이 자동 생성됨</p>
+              <p><strong>3. 새 앱 추가 시</strong><br>
+              API 키가 필요하면 <code>config.example</code> 파일을 만들고, 실제 키 파일은 <code>.gitignore</code>에 추가</p>
+            </div>
+          </section>
         </div>
       </section>
     </main>
