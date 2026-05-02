@@ -6,7 +6,7 @@ for %%I in ("%SCRIPT_DIR%..") do set "ROOT_DIR=%%~fI"
 set "SERVER=%ROOT_DIR%\apps\kosis\web_server.py"
 set "HOST=127.0.0.1"
 set "PORT=8765"
-set "URL=http://%HOST%:%PORT%/portal/index.html?v=20260502-google-calendar"
+set "URL=http://%HOST%:%PORT%/portal/index.html?v=20260502-git-panel"
 
 echo.
 echo Starting Local Desk...

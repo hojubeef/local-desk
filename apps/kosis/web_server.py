@@ -15,6 +15,7 @@ import html as html_lib
 import json
 import re
 import secrets
+import subprocess
 import sys
 import threading
 import time
@@ -45,7 +46,7 @@ CLIENT = KosisClient(KOSIS_API_KEY)
 JOBS = {}
 JOB_LOCK = threading.Lock()
 JOB_TTL_SECONDS = 600
-ASSET_VERSION = "20260502-google-calendar"
+ASSET_VERSION = "20260502-git-panel"
 PORTAL_DATA_PATH = ROOT_DIR / "portal" / "data" / "portal-data.json"
 LOCAL_DIR = ROOT_DIR / "local"
 GOOGLE_CREDENTIALS_PATH = LOCAL_DIR / "secrets" / "google-calendar-credentials.json"
@@ -462,6 +463,71 @@ def sanitize_portal_data_for_git(data):
     return sanitized
 
 
+def run_git(args, timeout=90):
+    try:
+        completed = subprocess.run(
+            ["git", *args],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+        return {
+            "ok": completed.returncode == 0,
+            "code": completed.returncode,
+            "command": "git " + " ".join(args),
+            "stdout": completed.stdout.strip(),
+            "stderr": completed.stderr.strip(),
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "code": -1,
+            "command": "git " + " ".join(args),
+            "stdout": "",
+            "stderr": "Git command timed out.",
+        }
+    except FileNotFoundError:
+        return {
+            "ok": False,
+            "code": -1,
+            "command": "git " + " ".join(args),
+            "stdout": "",
+            "stderr": "Git executable was not found.",
+        }
+
+
+def git_snapshot():
+    inside = run_git(["rev-parse", "--is-inside-work-tree"], timeout=10)
+    if not inside["ok"]:
+        return {
+            "ok": False,
+            "repo": False,
+            "error": inside["stderr"] or inside["stdout"] or "Git 저장소를 찾을 수 없습니다.",
+        }
+
+    branch = run_git(["branch", "--show-current"], timeout=10)
+    status_short = run_git(["status", "--short"], timeout=10)
+    status_branch = run_git(["status", "-sb"], timeout=10)
+    remote = run_git(["remote", "-v"], timeout=10)
+    last_commit = run_git(["log", "-1", "--oneline"], timeout=10)
+
+    status_lines = [line for line in status_short["stdout"].splitlines() if line.strip()]
+    return {
+        "ok": True,
+        "repo": True,
+        "branch": branch["stdout"] or "main",
+        "status": status_lines,
+        "statusText": status_short["stdout"],
+        "statusBranch": status_branch["stdout"],
+        "remote": remote["stdout"],
+        "lastCommit": last_commit["stdout"],
+        "clean": len(status_lines) == 0,
+    }
+
+
 def google_credentials():
     if not GOOGLE_CREDENTIALS_PATH.exists():
         raise GoogleCalendarError(
@@ -827,6 +893,9 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
         if path == "/api/portal/data":
             self.handle_portal_data_get()
             return
+        if path == "/api/git/status":
+            self.handle_git_status()
+            return
         if path == "/api/calendar/google/status":
             self.handle_google_calendar_status()
             return
@@ -850,6 +919,9 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
             return
         if path == "/api/calendar/google/sync":
             self.handle_google_calendar_sync()
+            return
+        if path == "/api/git/action":
+            self.handle_git_action()
             return
         if path == "/api/kosis/search":
             self.handle_search()
@@ -983,6 +1055,78 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
             self.write_json({"ok": True, "path": str(PORTAL_DATA_PATH)})
         except Exception as error:
             self.write_json({"error": str(error)}, status=500)
+
+    def handle_git_status(self):
+        self.write_json(git_snapshot())
+
+    def handle_git_action(self):
+        body = self.read_json_body()
+        action = safe_text(body.get("action")).strip()
+
+        if action == "refresh":
+            self.write_json({"ok": True, "snapshot": git_snapshot(), "result": None})
+            return
+
+        if action == "pull":
+            result = run_git(["pull", "--ff-only"], timeout=180)
+            self.write_json({
+                "ok": result["ok"],
+                "result": result,
+                "snapshot": git_snapshot(),
+            }, status=200 if result["ok"] else 409)
+            return
+
+        if action == "push":
+            result = run_git(["push"], timeout=180)
+            self.write_json({
+                "ok": result["ok"],
+                "result": result,
+                "snapshot": git_snapshot(),
+            }, status=200 if result["ok"] else 409)
+            return
+
+        if action == "commit":
+            message = safe_text(body.get("message")).strip()
+            if not message:
+                self.write_json({"error": "커밋 메시지가 필요합니다."}, status=400)
+                return
+            if len(message) > 160:
+                self.write_json({"error": "커밋 메시지는 160자 이내로 입력해주세요."}, status=400)
+                return
+
+            add_result = run_git(["add", "--all"], timeout=90)
+            if not add_result["ok"]:
+                self.write_json({
+                    "ok": False,
+                    "result": add_result,
+                    "snapshot": git_snapshot(),
+                }, status=409)
+                return
+
+            staged = run_git(["diff", "--cached", "--quiet"], timeout=30)
+            if staged["code"] == 0:
+                self.write_json({
+                    "ok": True,
+                    "result": {
+                        "ok": True,
+                        "code": 0,
+                        "command": "git commit",
+                        "stdout": "커밋할 변경사항이 없습니다.",
+                        "stderr": "",
+                    },
+                    "snapshot": git_snapshot(),
+                })
+                return
+
+            result = run_git(["commit", "-m", message], timeout=180)
+            self.write_json({
+                "ok": result["ok"],
+                "result": result,
+                "snapshot": git_snapshot(),
+            }, status=200 if result["ok"] else 409)
+            return
+
+        self.write_json({"error": "지원하지 않는 Git 작업입니다."}, status=400)
 
     def google_redirect_uri(self):
         host = self.headers.get("Host", "127.0.0.1:8765")

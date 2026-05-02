@@ -80,6 +80,11 @@
       calendars: [],
       syncedMonths: new Set()
     },
+    git: {
+      snapshot: null,
+      busy: false,
+      output: "아직 실행한 작업이 없습니다."
+    },
     filters: {
       posts: { categoryId: "all", tag: "", status: "active", keyword: "" },
       apps: { categoryId: "all", tag: "", status: "active", keyword: "" },
@@ -434,6 +439,96 @@
       throw error;
     }
     return payload;
+  }
+
+  function gitResultText(result) {
+    if (!result) return "";
+    return [
+      `$ ${result.command || "git"}`,
+      result.stdout || "",
+      result.stderr || ""
+    ].filter(Boolean).join("\n");
+  }
+
+  function renderGit() {
+    const branchNode = $("#gitBranch");
+    if (!branchNode) return;
+    const snapshot = state.git.snapshot;
+    const busy = state.git.busy;
+    $("#gitRefresh").disabled = busy;
+    $("#gitPull").disabled = busy;
+    $("#gitPush").disabled = busy;
+    $("#gitCommitForm").querySelector("button").disabled = busy;
+
+    if (!snapshot) {
+      branchNode.textContent = "-";
+      $("#gitCleanState").textContent = busy ? "확인 중" : "-";
+      $("#gitLastCommit").textContent = "-";
+      $("#gitRemoteOutput").textContent = "";
+      $("#gitFileList").innerHTML = empty("상태를 아직 확인하지 않았습니다.");
+      $("#gitActionOutput").textContent = state.git.output;
+      return;
+    }
+
+    if (!snapshot.repo) {
+      branchNode.textContent = "-";
+      $("#gitCleanState").textContent = "저장소 없음";
+      $("#gitLastCommit").textContent = "-";
+      $("#gitRemoteOutput").textContent = snapshot.error || "Git 저장소를 찾을 수 없습니다.";
+      $("#gitFileList").innerHTML = empty("변경 파일 없음");
+      $("#gitActionOutput").textContent = state.git.output;
+      return;
+    }
+
+    branchNode.textContent = snapshot.branch || "-";
+    $("#gitCleanState").textContent = snapshot.clean ? "깨끗함" : `${snapshot.status.length}개 변경`;
+    $("#gitLastCommit").textContent = snapshot.lastCommit || "-";
+    $("#gitRemoteOutput").textContent = [snapshot.statusBranch, snapshot.remote].filter(Boolean).join("\n\n") || "원격 저장소 없음";
+    $("#gitFileList").innerHTML = snapshot.status.length
+      ? snapshot.status.map((line) => {
+          const code = line.slice(0, 2).trim() || "?";
+          const file = line.slice(3).trim() || line;
+          return `<div class="git-file-item"><strong>${escapeHtml(code)}</strong><span>${escapeHtml(file)}</span></div>`;
+        }).join("")
+      : empty("변경 파일 없음");
+    $("#gitActionOutput").textContent = state.git.output;
+  }
+
+  async function loadGitStatus() {
+    state.git.busy = true;
+    renderGit();
+    try {
+      state.git.snapshot = await fetchJson("/api/git/status");
+    } catch (error) {
+      state.git.snapshot = { repo: false, error: error.message };
+    } finally {
+      state.git.busy = false;
+      renderGit();
+    }
+  }
+
+  async function runGitAction(action, options = {}) {
+    if (action === "push" && !confirm("현재 커밋된 내용을 GitHub로 올릴까요? GitHub 저장소에 데이터가 전송됩니다.")) return;
+    if (action === "pull" && !confirm("GitHub의 변경사항을 이 PC로 받을까요? 로컬 파일이 바뀔 수 있습니다.")) return;
+
+    state.git.busy = true;
+    state.git.output = "실행 중...";
+    renderGit();
+    try {
+      const payload = await fetchJson("/api/git/action", {
+        method: "POST",
+        body: JSON.stringify({ action, ...options })
+      });
+      state.git.snapshot = payload.snapshot || state.git.snapshot;
+      state.git.output = gitResultText(payload.result) || "완료";
+      if (action === "commit") $("#gitCommitMessage").value = "";
+    } catch (error) {
+      state.git.snapshot = error.payload?.snapshot || state.git.snapshot;
+      state.git.output = gitResultText(error.payload?.result) || error.message;
+    } finally {
+      state.git.busy = false;
+      renderGit();
+    }
   }
 
   function calendarMonthKey() {
@@ -1150,6 +1245,7 @@
     renderTodos();
     renderLinks();
     renderCalendar();
+    renderGit();
   }
 
   function addCategory(type, name, parentId) {
@@ -1615,6 +1711,13 @@
       renderGoogleCalendarStatus();
       maybeAutoSyncGoogleCalendar();
     });
+    $("#gitRefresh").addEventListener("click", loadGitStatus);
+    $("#gitPull").addEventListener("click", () => runGitAction("pull"));
+    $("#gitPush").addEventListener("click", () => runGitAction("push"));
+    $("#gitCommitForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      runGitAction("commit", { message: $("#gitCommitMessage").value.trim() });
+    });
 
     document.addEventListener("click", (event) => {
       const categoryButton = event.target.closest("[data-category-filter]");
@@ -1710,6 +1813,7 @@
     bindEvents();
     renderAll();
     refreshGoogleCalendarStatus();
+    loadGitStatus();
   }
 
   init();

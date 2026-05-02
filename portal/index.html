@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Local Desk</title>
-  <link rel="stylesheet" href="./styles.css?v=20260502-google-calendar">
-  <script defer src="./apps.js?v=20260502-google-calendar"></script>
-  <script defer src="./app.js?v=20260502-google-calendar"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260502-git-panel">
+  <script defer src="./apps.js?v=20260502-git-panel"></script>
+  <script defer src="./app.js?v=20260502-git-panel"></script>
 </head>
 <body>
   <div class="shell">
@@ -43,6 +43,10 @@
         <button class="nav-item" type="button" data-section="apps">
           <span class="nav-dot" aria-hidden="true"></span>
           기능
+        </button>
+        <button class="nav-item" type="button" data-section="git">
+          <span class="nav-dot" aria-hidden="true"></span>
+          Git
         </button>
       </nav>
 
@@ -529,6 +533,68 @@
               </div>
             </div>
             <div class="app-grid" id="appGrid"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section" id="section-git" aria-labelledby="gitHeading">
+        <div class="git-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">Git</p>
+                <h2 id="gitHeading">저장소 상태</h2>
+              </div>
+              <div class="panel-head-actions">
+                <button class="text-button tiny" type="button" id="gitRefresh">새로고침</button>
+                <button class="text-button tiny" type="button" id="gitPull">받기</button>
+                <button class="primary-button small" type="button" id="gitPush">올리기</button>
+              </div>
+            </div>
+            <p class="hint">새로고침 = 현재 상태 다시 읽기 &middot; 받기 = GitHub에서 최신 내용 가져오기 &middot; 올리기 = 커밋한 내용을 GitHub에 전송</p>
+            <div class="git-summary">
+              <div>
+                <span>브랜치</span>
+                <strong id="gitBranch">-</strong>
+              </div>
+              <div>
+                <span>상태</span>
+                <strong id="gitCleanState">-</strong>
+              </div>
+              <div>
+                <span>최근 커밋</span>
+                <strong id="gitLastCommit">-</strong>
+              </div>
+            </div>
+            <pre class="git-output" id="gitRemoteOutput"></pre>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">Commit</p>
+                <h2>변경사항 저장</h2>
+              </div>
+            </div>
+            <p class="hint">변경한 파일들을 메시지와 함께 내 컴퓨터에 기록합니다. 아직 GitHub에는 안 올라가요 -- 올리려면 위의 '올리기' 버튼을 누르세요.</p>
+            <form class="post-form" id="gitCommitForm">
+              <label>
+                <span>메시지</span>
+                <input id="gitCommitMessage" type="text" maxlength="160" placeholder="예: Update dashboard" required>
+              </label>
+              <button class="primary-button" type="submit">커밋</button>
+            </form>
+            <div class="git-file-list" id="gitFileList"></div>
+          </section>
+
+          <section class="panel git-log-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">Log</p>
+                <h2>실행 결과</h2>
+              </div>
+            </div>
+            <pre class="git-output large" id="gitActionOutput">아직 실행한 작업이 없습니다.</pre>
           </section>
         </div>
       </section>

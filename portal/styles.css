@@ -165,6 +165,13 @@ button {
   font-weight: 700;
 }
 
+.hint {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
 h1,
 h2 {
   margin: 0;
@@ -780,6 +787,99 @@ label {
   border-color: rgba(74, 222, 128, 0.28);
   background: rgba(74, 222, 128, 0.09);
   color: #86efac;
+}
+
+.git-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.git-log-panel {
+  grid-column: 1 / -1;
+}
+
+.git-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.git-summary div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #111215;
+}
+
+.git-summary span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted-2);
+  font-size: 11px;
+}
+
+.git-summary strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-output {
+  min-height: 44px;
+  max-height: 170px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0e0f12;
+  color: var(--muted);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.git-output.large {
+  min-height: 150px;
+  max-height: 300px;
+}
+
+.git-file-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.git-file-item {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #111215;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.git-file-item strong {
+  color: var(--accent-2);
+  font-size: 11px;
+}
+
+.git-file-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .board-layout {
@@ -1906,6 +2006,7 @@ label {
   .library-layout,
   .apps-library-layout,
   .calendar-layout,
+  .git-layout,
   .kosis-layout {
     grid-template-columns: 1fr;
   }
