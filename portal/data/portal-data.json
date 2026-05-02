@@ -1,0 +1,235 @@
+{
+  "version": 2,
+  "categories": {
+    "posts": [
+      {
+        "id": "post-memo",
+        "name": "메모",
+        "parentId": ""
+      },
+      {
+        "id": "post-work",
+        "name": "작업",
+        "parentId": ""
+      },
+      {
+        "id": "post-kosis",
+        "name": "KOSIS",
+        "parentId": ""
+      },
+      {
+        "id": "post-idea",
+        "name": "아이디어",
+        "parentId": ""
+      }
+    ],
+    "apps": [
+      {
+        "id": "app-stats",
+        "name": "통계",
+        "parentId": ""
+      },
+      {
+        "id": "app-tools",
+        "name": "도구",
+        "parentId": ""
+      },
+      {
+        "id": "app-docs",
+        "name": "문서",
+        "parentId": ""
+      },
+      {
+        "id": "app-later",
+        "name": "나중에 정리",
+        "parentId": ""
+      }
+    ],
+    "todos": [
+      {
+        "id": "todo-work",
+        "name": "업무",
+        "parentId": ""
+      },
+      {
+        "id": "todo-report",
+        "name": "보고서",
+        "parentId": ""
+      },
+      {
+        "id": "todo-personal",
+        "name": "개인",
+        "parentId": ""
+      },
+      {
+        "id": "todo-later",
+        "name": "나중에",
+        "parentId": ""
+      }
+    ],
+    "links": [
+      {
+        "id": "link-work",
+        "name": "업무",
+        "parentId": ""
+      },
+      {
+        "id": "link-data",
+        "name": "자료",
+        "parentId": ""
+      },
+      {
+        "id": "link-reference",
+        "name": "참고",
+        "parentId": ""
+      },
+      {
+        "id": "link-favorite",
+        "name": "자주 씀",
+        "parentId": ""
+      }
+    ],
+    "events": [
+      {
+        "id": "event-work",
+        "name": "업무",
+        "parentId": ""
+      },
+      {
+        "id": "event-deadline",
+        "name": "마감",
+        "parentId": ""
+      },
+      {
+        "id": "event-personal",
+        "name": "개인",
+        "parentId": ""
+      }
+    ]
+  },
+  "posts": [
+    {
+      "id": "seed-kosis",
+      "title": "KOSIS 포털 전환",
+      "body": "기존 Python GUI를 개인 홈의 첫 기능으로 연결.",
+      "categoryId": "post-kosis",
+      "tags": [
+        "KOSIS",
+        "전환"
+      ],
+      "status": "active",
+      "createdAt": 1777722862944,
+      "updatedAt": 1777722862944
+    }
+  ],
+  "customApps": [],
+  "appMeta": {
+    "kosis": {
+      "categoryId": "app-stats",
+      "tags": [
+        "KOSIS",
+        "통계"
+      ],
+      "status": "active",
+      "favorite": true,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    },
+    "kosis-gui": {
+      "categoryId": "app-stats",
+      "tags": [
+        "KOSIS",
+        "GUI"
+      ],
+      "status": "archived",
+      "favorite": false,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    },
+    "kosis-debug": {
+      "categoryId": "app-tools",
+      "tags": [
+        "KOSIS",
+        "점검"
+      ],
+      "status": "archived",
+      "favorite": false,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    },
+    "readme": {
+      "categoryId": "app-docs",
+      "tags": [
+        "문서",
+        "설명"
+      ],
+      "status": "active",
+      "favorite": false,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    }
+  },
+  "todos": [
+    {
+      "id": "seed-todo-portal",
+      "title": "Local Desk 포털 정리",
+      "notes": "달력, 할 일, 홈페이지 리스트를 개인 대시보드에 연결.",
+      "categoryId": "todo-work",
+      "tags": [
+        "Local Desk"
+      ],
+      "status": "doing",
+      "priority": "normal",
+      "dueDate": "2026-05-02",
+      "order": 1777722862944,
+      "createdAt": 1777722862944,
+      "updatedAt": 1777722862944
+    }
+  ],
+  "links": [
+    {
+      "id": "seed-link-google-calendar",
+      "name": "Google Calendar",
+      "url": "https://calendar.google.com/",
+      "description": "나중에 동기화 후보",
+      "categoryId": "link-reference",
+      "tags": [
+        "달력",
+        "동기화"
+      ],
+      "status": "active",
+      "favorite": true,
+      "createdAt": 1777722862944,
+      "updatedAt": 1777722862944
+    }
+  ],
+  "events": [],
+  "calendarSettings": {
+    "provider": "local",
+    "google": {
+      "status": "connected",
+      "calendarId": "__all__",
+      "lastSyncAt": ""
+    }
+  }
+}

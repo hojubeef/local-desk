@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KOSIS 통계 - Local Desk</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.0.min.js" charset="utf-8"></script>
+  <script defer src="./kosis.js"></script>
+</head>
+<body>
+  <main class="main page-main">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Local Desk</p>
+        <h1>KOSIS 통계</h1>
+      </div>
+      <div class="topbar-actions">
+        <a class="text-button link-button" href="../index.html">홈</a>
+      </div>
+    </header>
+
+    <section class="kosis-layout">
+      <aside class="panel kosis-search-panel" data-panel="search">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">검색</p>
+            <h2>조건</h2>
+          </div>
+          <button class="panel-toggle-btn" type="button" data-toggle-panel="search" title="접기">&lsaquo;</button>
+        </div>
+
+        <form class="post-form" id="kosisSearchForm">
+          <label>
+            <span>시/도</span>
+            <select id="sidoSelect"></select>
+          </label>
+          <label>
+            <span>시/군/구</span>
+            <select id="sigunguSelect"></select>
+          </label>
+          <label>
+            <span>키워드</span>
+            <input id="keywordInput" type="search" value="인구" required>
+          </label>
+          <div class="criteria-box">
+            <label>
+              <span>보고서 기준년도</span>
+              <input id="reportYearInput" type="number" min="1900" max="2100" placeholder="예: 2024">
+            </label>
+            <div class="year-window-options">
+              <span>기준 기간</span>
+              <label class="inline-check">
+                <input type="radio" name="yearWindow" value="5" checked>
+                <span>5년 이내</span>
+              </label>
+              <label class="inline-check">
+                <input type="radio" name="yearWindow" value="10">
+                <span>10년 이내</span>
+              </label>
+              <label class="inline-check">
+                <input type="radio" name="yearWindow" value="20">
+                <span>20년 이내</span>
+              </label>
+              <label class="inline-check custom-year-option">
+                <input type="radio" name="yearWindow" value="custom">
+                <span>직접</span>
+                <input id="customYearWindowInput" type="number" min="1" max="100" value="5" aria-label="직접 입력 기간">
+              </label>
+            </div>
+            <label class="inline-check">
+              <input id="includeLatestData" type="checkbox" checked>
+              <span>나중에 자료 조회 시 기준기간 + 최신자료까지 포함</span>
+            </label>
+          </div>
+          <label class="inline-check">
+            <input id="subregionSearch" type="checkbox" checked>
+            <span>읍면동 보강검색</span>
+          </label>
+          <button class="primary-button" type="submit" id="searchButton">검색</button>
+          <div class="fresh-search-box">
+            <p>같은 조건으로 검색한 기록이 있으면 저장된 결과를 먼저 보여줍니다.</p>
+            <button class="text-button" type="button" id="freshSearchButton">다시 새롭게 검색</button>
+          </div>
+        </form>
+
+        <div class="status-box" id="statusBox">서버 확인 중...</div>
+        <div class="server-help" id="serverHelp" hidden>
+          <p>로컬 서버가 꺼져 있으면 KOSIS 검색을 사용할 수 없습니다.</p>
+          <button class="primary-button server-launch-button" type="button" id="copyLauncherPath">실행 파일 경로 복사</button>
+          <p class="server-help-note" id="launcherCopyStatus">루트 폴더의 Local Desk 실행.bat를 직접 열어주세요.</p>
+        </div>
+        <div class="search-progress-card">
+          <div class="search-progress-head">
+            <span>진행률</span>
+            <strong id="searchProgressPercent">0%</strong>
+          </div>
+          <div class="search-progress-meter" aria-hidden="true">
+            <span id="searchProgressFill"></span>
+          </div>
+          <p id="searchProgressMessage">검색 대기 중</p>
+        </div>
+        <div class="api-usage-card">
+          <div>
+            <span>최근 60초</span>
+            <strong id="apiRecent">0/1000회</strong>
+          </div>
+          <div class="api-meter" aria-hidden="true">
+            <span id="apiMeterFill"></span>
+          </div>
+          <div class="api-usage-grid">
+            <p>이번 검색 <strong id="apiSession">0회</strong></p>
+            <p>누적 <strong id="apiTotal">0회</strong></p>
+          </div>
+        </div>
+        <div class="search-log" id="searchLog">
+          <p>검색 대기 중</p>
+        </div>
+      </aside>
+
+      <section class="panel kosis-results-panel" data-panel="results">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">결과</p>
+            <h2 id="resultTitle">통계표 목록</h2>
+          </div>
+          <div class="panel-head-actions">
+            <span class="result-count" id="resultCount">0건</span>
+            <button class="panel-toggle-btn" type="button" data-toggle-panel="results" title="접기">&lsaquo;</button>
+          </div>
+        </div>
+        <div class="result-tools">
+          <input class="search-box result-search-box" id="resultSearch" type="search" placeholder="결과에서 찾기">
+        </div>
+        <div class="folder-list" id="folderList"></div>
+      </section>
+
+      <section class="panel kosis-detail-panel" data-panel="detail">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">상세</p>
+            <h2 id="detailTitle">통계표 선택</h2>
+          </div>
+          <button class="panel-toggle-btn" type="button" data-toggle-panel="detail" title="접기">&lsaquo;</button>
+        </div>
+        <div class="detail-pane" id="detailPane">
+          <div class="empty">검색 결과에서 통계표를 선택하세요.</div>
+        </div>
+      </section>
+
+      <section class="panel kosis-preview-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">결과</p>
+            <h2 id="previewPanelTitle">자료 미리보기</h2>
+          </div>
+          <div class="panel-head-actions">
+            <span class="result-count" id="previewRowCount"></span>
+            <button class="text-button tiny" type="button" id="toggleChartBtn" disabled>그래프</button>
+            <button class="text-button tiny" type="button" id="downloadXlsxBtn" disabled>Excel 다운로드</button>
+          </div>
+        </div>
+        <div class="preview-pane" id="previewPane">
+          <div class="empty">통계표를 선택한 뒤 자료 미리보기를 실행하세요.</div>
+        </div>
+        <div class="chart-panel" id="chartPanel" hidden>
+          <div class="chart-config" id="chartConfig">
+            <label>
+              <span>차트 종류</span>
+              <select id="chartTypeSelect">
+                <option value="bar">막대</option>
+                <option value="line">선형</option>
+                <option value="scatter">산점도</option>
+                <option value="pie">원형</option>
+              </select>
+            </label>
+          </div>
+          <div id="chartArea" style="width:100%;min-height:400px;"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

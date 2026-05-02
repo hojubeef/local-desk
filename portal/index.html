@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local Desk</title>
+  <link rel="stylesheet" href="./styles.css?v=20260502-google-calendar">
+  <script defer src="./apps.js?v=20260502-google-calendar"></script>
+  <script defer src="./app.js?v=20260502-google-calendar"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="메인 메뉴">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">LD</div>
+        <div>
+          <p class="brand-title">Local Desk</p>
+          <p class="brand-subtitle">private workspace</p>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="섹션">
+        <button class="nav-item active" type="button" data-section="home">
+          <span class="nav-dot" aria-hidden="true"></span>
+          홈
+        </button>
+        <button class="nav-item" type="button" data-section="board">
+          <span class="nav-dot" aria-hidden="true"></span>
+          게시판
+        </button>
+        <button class="nav-item" type="button" data-section="calendar">
+          <span class="nav-dot" aria-hidden="true"></span>
+          달력
+        </button>
+        <button class="nav-item" type="button" data-section="todos">
+          <span class="nav-dot" aria-hidden="true"></span>
+          할 일
+        </button>
+        <button class="nav-item" type="button" data-section="links">
+          <span class="nav-dot" aria-hidden="true"></span>
+          홈페이지
+        </button>
+        <button class="nav-item" type="button" data-section="apps">
+          <span class="nav-dot" aria-hidden="true"></span>
+          기능
+        </button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <p>로컬 전용</p>
+        <p id="todayText"></p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">개인 작업대</p>
+          <h1>필요한 것만 모아두는 로컬 홈</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" type="button" id="openAddApp" title="기능 추가" aria-label="기능 추가">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="icon-button" type="button" id="exportData" title="데이터 내보내기" aria-label="데이터 내보내기">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="section active" id="section-home" aria-labelledby="homeHeading">
+        <div class="home-grid">
+          <section class="panel home-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">달력</p>
+                <h2 id="homeHeading">오늘</h2>
+              </div>
+              <button class="text-button tiny" type="button" data-section-jump="calendar">열기</button>
+            </div>
+            <div class="mini-calendar" id="homeCalendarGrid"></div>
+            <div class="mini-list" id="homeTodayEvents"></div>
+          </section>
+
+          <section class="panel home-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">할 일</p>
+                <h2>오늘 할 일</h2>
+              </div>
+              <button class="text-button tiny" type="button" data-section-jump="todos">전체</button>
+            </div>
+            <div class="mini-list" id="homeTodos"></div>
+          </section>
+
+          <section class="panel home-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">홈페이지</p>
+                <h2>즐겨찾기</h2>
+              </div>
+              <button class="text-button tiny" type="button" data-section-jump="links">관리</button>
+            </div>
+            <div class="mini-list" id="homeLinks"></div>
+          </section>
+
+          <section class="panel home-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">앱 런처</p>
+                <h2>즐겨찾기 기능</h2>
+              </div>
+              <button class="text-button tiny" type="button" data-section-jump="apps">전체</button>
+            </div>
+            <div class="mini-list" id="homeApps"></div>
+          </section>
+
+          <section class="panel home-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">메모</p>
+                <h2>빠른 기록</h2>
+              </div>
+            </div>
+            <form class="quick-form compact-form" id="quickPostForm">
+              <input id="quickPostTitle" type="text" maxlength="60" placeholder="제목">
+              <textarea id="quickPostBody" rows="3" placeholder="내용"></textarea>
+              <button class="primary-button small" type="submit">등록</button>
+            </form>
+          </section>
+
+          <section class="panel home-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">게시판</p>
+                <h2>최근 글</h2>
+              </div>
+              <button class="text-button tiny" type="button" data-section-jump="board">열기</button>
+            </div>
+            <div class="mini-list" id="recentPosts"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section" id="section-calendar" aria-labelledby="calendarHeading">
+        <div class="calendar-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">달력</p>
+                <h2 id="calendarHeading">월간 보기</h2>
+              </div>
+              <div class="panel-head-actions">
+                <button class="text-button tiny" type="button" id="prevMonth">이전</button>
+                <strong class="month-label" id="calendarMonthLabel"></strong>
+                <button class="text-button tiny" type="button" id="nextMonth">다음</button>
+              </div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="sync-note google-sync-panel">
+              <div>
+                <strong>Google Calendar</strong>
+                <span id="googleCalendarStatus">연결 확인 전</span>
+              </div>
+              <label>
+                <span>가져올 캘린더</span>
+                <select id="googleCalendarSelect">
+                  <option value="__all__">모든 캘린더</option>
+                  <option value="primary">기본 캘린더</option>
+                </select>
+              </label>
+              <div class="google-sync-actions">
+                <button class="text-button tiny" type="button" id="googleConnect">연결</button>
+                <button class="text-button tiny" type="button" id="googleRefreshStatus">상태 확인</button>
+                <button class="text-button tiny" type="button" id="googleSyncMonth">이번 달 동기화</button>
+              </div>
+              <label class="inline-check">
+                <input id="googlePushLocal" type="checkbox">
+                <span>로컬 일정도 Google에 추가</span>
+              </label>
+              <small>인증 파일과 토큰은 local/secrets에만 저장됩니다.</small>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">일정</p>
+                <h2>일정 추가</h2>
+              </div>
+            </div>
+            <form class="post-form" id="eventForm">
+              <label>
+                <span>제목</span>
+                <input id="eventTitle" type="text" maxlength="80" required>
+              </label>
+              <div class="form-row">
+                <label>
+                  <span>날짜</span>
+                  <input id="eventDate" type="date" required>
+                </label>
+                <label>
+                  <span>시작</span>
+                  <input id="eventStart" type="time">
+                </label>
+                <label>
+                  <span>종료</span>
+                  <input id="eventEnd" type="time">
+                </label>
+              </div>
+              <label>
+                <span>분류</span>
+                <select id="eventCategory"></select>
+              </label>
+              <label>
+                <span>태그</span>
+                <input id="eventTags" type="text" maxlength="120" placeholder="쉼표로 구분">
+              </label>
+              <label>
+                <span>메모</span>
+                <textarea id="eventNotes" rows="5"></textarea>
+              </label>
+              <button class="primary-button" type="submit">일정 저장</button>
+            </form>
+            <div class="mini-list event-list" id="eventList"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section" id="section-todos" aria-labelledby="todosHeading">
+        <div class="library-layout">
+          <aside class="panel taxonomy-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">분류</p>
+                <h2>할 일 트리</h2>
+              </div>
+            </div>
+            <div class="tree-list" id="todoCategoryTree"></div>
+            <form class="mini-form" id="todoCategoryForm">
+              <input id="todoCategoryName" type="text" maxlength="40" placeholder="분류 추가">
+              <select id="todoCategoryParent"></select>
+              <button class="text-button" type="submit">추가</button>
+            </form>
+            <div class="tag-filter-panel">
+              <p class="section-label">태그</p>
+              <div class="tag-filter-list" id="todoTagFilters"></div>
+            </div>
+          </aside>
+
+          <section class="panel post-editor">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">할 일</p>
+                <h2 id="todosHeading">할 일 추가</h2>
+              </div>
+            </div>
+            <form id="todoForm" class="post-form">
+              <input id="todoEditingId" type="hidden">
+              <label>
+                <span>제목</span>
+                <input id="todoTitle" type="text" maxlength="100" required>
+              </label>
+              <label>
+                <span>분류</span>
+                <select id="todoCategory"></select>
+              </label>
+              <div class="form-row">
+                <label>
+                  <span>마감일</span>
+                  <input id="todoDueDate" type="date">
+                </label>
+                <label>
+                  <span>우선순위</span>
+                  <select id="todoPriority">
+                    <option value="normal">보통</option>
+                    <option value="high">높음</option>
+                    <option value="low">낮음</option>
+                  </select>
+                </label>
+                <label>
+                  <span>상태</span>
+                  <select id="todoStatus">
+                    <option value="todo">예정</option>
+                    <option value="doing">진행중</option>
+                    <option value="done">완료</option>
+                    <option value="hold">보류</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>태그</span>
+                <input id="todoTags" type="text" maxlength="120" placeholder="쉼표로 구분">
+              </label>
+              <label>
+                <span>메모</span>
+                <textarea id="todoNotes" rows="6"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="text-button" type="button" id="cancelTodoEdit" hidden>수정 취소</button>
+                <button class="primary-button" type="submit" id="saveTodoButton">저장</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel post-browser">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">목록</p>
+                <h2>할 일 목록</h2>
+              </div>
+              <div class="panel-head-actions">
+                <select class="status-filter" id="todoStatusFilter">
+                  <option value="open">미완료</option>
+                  <option value="todo">예정</option>
+                  <option value="doing">진행중</option>
+                  <option value="done">완료</option>
+                  <option value="hold">보류</option>
+                  <option value="all">전체</option>
+                </select>
+                <input class="search-box" id="todoSearch" type="search" placeholder="검색">
+              </div>
+            </div>
+            <div class="post-list" id="todoList"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section" id="section-links" aria-labelledby="linksHeading">
+        <div class="library-layout">
+          <aside class="panel taxonomy-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">분류</p>
+                <h2>홈페이지 트리</h2>
+              </div>
+            </div>
+            <div class="tree-list" id="linkCategoryTree"></div>
+            <form class="mini-form" id="linkCategoryForm">
+              <input id="linkCategoryName" type="text" maxlength="40" placeholder="분류 추가">
+              <select id="linkCategoryParent"></select>
+              <button class="text-button" type="submit">추가</button>
+            </form>
+            <div class="tag-filter-panel">
+              <p class="section-label">태그</p>
+              <div class="tag-filter-list" id="linkTagFilters"></div>
+            </div>
+          </aside>
+
+          <section class="panel post-editor">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">홈페이지</p>
+                <h2 id="linksHeading">홈페이지 추가</h2>
+              </div>
+            </div>
+            <form id="linkForm" class="post-form">
+              <input id="linkEditingId" type="hidden">
+              <label>
+                <span>이름</span>
+                <input id="linkName" type="text" maxlength="80" required>
+              </label>
+              <label>
+                <span>주소</span>
+                <input id="linkUrl" type="url" placeholder="https://example.com" required>
+              </label>
+              <label>
+                <span>분류</span>
+                <select id="linkCategory"></select>
+              </label>
+              <label class="inline-check">
+                <input id="linkFavorite" type="checkbox">
+                <span>홈 즐겨찾기에 표시</span>
+              </label>
+              <label>
+                <span>태그</span>
+                <input id="linkTags" type="text" maxlength="120" placeholder="쉼표로 구분">
+              </label>
+              <label>
+                <span>설명</span>
+                <textarea id="linkDescription" rows="5"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="text-button" type="button" id="cancelLinkEdit" hidden>수정 취소</button>
+                <button class="primary-button" type="submit" id="saveLinkButton">저장</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel post-browser">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">목록</p>
+                <h2>홈페이지 목록</h2>
+              </div>
+              <div class="panel-head-actions">
+                <select class="status-filter" id="linkStatusFilter">
+                  <option value="active">활성</option>
+                  <option value="archived">보관</option>
+                  <option value="hidden">숨김</option>
+                  <option value="all">전체</option>
+                </select>
+                <input class="search-box" id="linkSearch" type="search" placeholder="검색">
+              </div>
+            </div>
+            <div class="post-list" id="linkList"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section" id="section-board" aria-labelledby="boardHeading">
+        <div class="library-layout">
+          <aside class="panel taxonomy-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">분류</p>
+                <h2>게시판 트리</h2>
+              </div>
+            </div>
+            <div class="tree-list" id="postCategoryTree"></div>
+            <form class="mini-form" id="postCategoryForm">
+              <input id="postCategoryName" type="text" maxlength="40" placeholder="분류 추가">
+              <select id="postCategoryParent"></select>
+              <button class="text-button" type="submit">추가</button>
+            </form>
+            <div class="tag-filter-panel">
+              <p class="section-label">태그</p>
+              <div class="tag-filter-list" id="postTagFilters"></div>
+            </div>
+          </aside>
+
+          <section class="panel post-editor">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">게시판</p>
+                <h2 id="boardHeading">글 작성</h2>
+              </div>
+            </div>
+            <form id="postForm" class="post-form">
+              <input id="postEditingId" type="hidden">
+              <label>
+                <span>제목</span>
+                <input id="postTitle" type="text" maxlength="80" required>
+              </label>
+              <label>
+                <span>분류</span>
+                <select id="postCategory"></select>
+              </label>
+              <label>
+                <span>태그</span>
+                <input id="postTags" type="text" maxlength="120" placeholder="쉼표로 구분">
+              </label>
+              <label>
+                <span>상태</span>
+                <select id="postStatus">
+                  <option value="active">활성</option>
+                  <option value="archived">보관</option>
+                  <option value="hidden">숨김</option>
+                </select>
+              </label>
+              <label>
+                <span>내용</span>
+                <textarea id="postBody" rows="12" required></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="text-button" type="button" id="cancelPostEdit" hidden>수정 취소</button>
+                <button class="primary-button" type="submit" id="savePostButton">저장</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel post-browser">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">목록</p>
+                <h2>저장된 글</h2>
+              </div>
+              <div class="panel-head-actions">
+                <select class="status-filter" id="postStatusFilter" aria-label="게시글 상태">
+                  <option value="active">활성</option>
+                  <option value="archived">보관</option>
+                  <option value="hidden">숨김</option>
+                  <option value="all">전체</option>
+                </select>
+                <input class="search-box" id="postSearch" type="search" placeholder="검색">
+              </div>
+            </div>
+            <div class="post-list" id="postList"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section" id="section-apps" aria-labelledby="appsHeading">
+        <div class="library-layout apps-library-layout">
+          <aside class="panel taxonomy-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">분류</p>
+                <h2>기능 트리</h2>
+              </div>
+            </div>
+            <div class="tree-list" id="appCategoryTree"></div>
+            <form class="mini-form" id="appCategoryForm">
+              <input id="appCategoryName" type="text" maxlength="40" placeholder="분류 추가">
+              <select id="appCategoryParent"></select>
+              <button class="text-button" type="submit">추가</button>
+            </form>
+            <div class="tag-filter-panel">
+              <p class="section-label">태그</p>
+              <div class="tag-filter-list" id="appTagFilters"></div>
+            </div>
+          </aside>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">모듈</p>
+                <h2 id="appsHeading">기능 목록</h2>
+              </div>
+              <div class="panel-head-actions">
+                <select class="status-filter" id="appStatusFilter" aria-label="기능 상태">
+                  <option value="active">활성</option>
+                  <option value="archived">보관</option>
+                  <option value="hidden">숨김</option>
+                  <option value="all">전체</option>
+                </select>
+                <input class="search-box" id="appSearch" type="search" placeholder="검색">
+                <button class="primary-button small" type="button" id="openAddAppInline">기능 추가</button>
+              </div>
+            </div>
+            <div class="app-grid" id="appGrid"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="modal" id="addAppDialog">
+    <form method="dialog" class="modal-card" id="addAppForm">
+      <input id="appEditingId" type="hidden">
+      <div class="modal-head">
+        <h2 id="appDialogTitle">기능 추가</h2>
+        <button class="icon-button" type="button" id="closeAddApp" title="닫기" aria-label="닫기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <label>
+        <span>이름</span>
+        <input id="appName" type="text" maxlength="40" required>
+      </label>
+      <label>
+        <span>종류</span>
+        <select id="appType">
+          <option value="page">HTML 페이지</option>
+          <option value="file">로컬 파일</option>
+          <option value="external">웹 링크</option>
+        </select>
+      </label>
+      <label>
+        <span>경로 또는 주소</span>
+        <input id="appPath" type="text" required>
+      </label>
+      <label>
+        <span>설명</span>
+        <input id="appDescription" type="text" maxlength="90">
+      </label>
+      <label>
+        <span>분류</span>
+        <select id="appCategory"></select>
+      </label>
+      <label>
+        <span>태그</span>
+        <input id="appTags" type="text" maxlength="120" placeholder="쉼표로 구분">
+      </label>
+      <label>
+        <span>상태</span>
+        <select id="appStatus">
+          <option value="active">활성</option>
+          <option value="archived">보관</option>
+          <option value="hidden">숨김</option>
+        </select>
+      </label>
+      <label class="inline-check">
+        <input id="appFavorite" type="checkbox">
+        <span>홈 즐겨찾기에 표시</span>
+      </label>
+      <div class="modal-actions">
+        <button class="text-button" type="button" id="clearCustomApps">추가 목록 초기화</button>
+        <button class="text-button" type="button" id="cancelAppEdit" hidden>수정 취소</button>
+        <button class="primary-button" type="submit">추가</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

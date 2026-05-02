@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local secrets
+config.py
+apps/**/config.py
+.env
+*.env
+
+# Local data and generated files
+data/
+exports/
+*.xlsx
+*.xls
+*.csv
+*.zip
+
+# Portal data that should sync across PCs
+!portal/data/
+!portal/data/portal-data.json
+
+# Local-only workspace.
+# Keep the folder guide/placeholders, but never commit the actual contents.
+local/*
+!local/README.md
+!local/secrets/
+!local/exports/
+!local/cache/
+!local/logs/
+!local/archives/
+local/secrets/*
+local/exports/*
+local/cache/*
+local/logs/*
+local/archives/*
+!local/secrets/.gitkeep
+!local/exports/.gitkeep
+!local/cache/.gitkeep
+!local/logs/.gitkeep
+!local/archives/.gitkeep
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
