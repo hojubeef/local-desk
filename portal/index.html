@@ -261,6 +261,8 @@
             </div>
             <form id="todoForm" class="post-form">
               <input id="todoEditingId" type="hidden">
+              <input id="todoParentId" type="hidden">
+              <p class="hint" id="todoParentHint" hidden>세부 할일 추가 중: <strong id="todoParentName"></strong> <button class="text-button tiny" type="button" id="cancelSubTodo">취소</button></p>
               <label>
                 <span>제목</span>
                 <input id="todoTitle" type="text" maxlength="100" required>

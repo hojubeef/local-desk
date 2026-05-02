@@ -192,18 +192,61 @@
   "todos": [
     {
       "id": "seed-todo-portal",
+      "parentId": "",
       "title": "Local Desk 포털 정리",
       "notes": "달력, 할 일, 홈페이지 리스트를 개인 대시보드에 연결.",
       "categoryId": "todo-work",
       "tags": [
         "Local Desk"
       ],
-      "status": "doing",
+      "status": "done",
       "priority": "normal",
       "dueDate": "2026-05-02",
       "order": 1777722862944,
       "createdAt": 1777722862944,
-      "updatedAt": 1777722862944
+      "updatedAt": 1777727431060
+    },
+    {
+      "id": "todo-c2c74db2-fe78-474f-992c-4b10e12ce6c1",
+      "parentId": "",
+      "title": "123",
+      "notes": "123",
+      "categoryId": "todo-work",
+      "tags": [],
+      "status": "done",
+      "priority": "normal",
+      "dueDate": "2026-05-07",
+      "order": 1777728128436,
+      "createdAt": 1777728128436,
+      "updatedAt": 1777728142318
+    },
+    {
+      "id": "todo-51d13b73-1bbf-4e58-850c-172742986b5e",
+      "parentId": "todo-c2c74db2-fe78-474f-992c-4b10e12ce6c1",
+      "title": "123123",
+      "notes": "12321321",
+      "categoryId": "todo-work",
+      "tags": [],
+      "status": "done",
+      "priority": "normal",
+      "dueDate": "",
+      "order": 1777728132706,
+      "createdAt": 1777728132706,
+      "updatedAt": 1777728140691
+    },
+    {
+      "id": "todo-88b3f637-cb9f-49a0-8cc2-6ecc0b0f35e5",
+      "parentId": "todo-c2c74db2-fe78-474f-992c-4b10e12ce6c1",
+      "title": "123123",
+      "notes": "123123",
+      "categoryId": "todo-work",
+      "tags": [],
+      "status": "done",
+      "priority": "normal",
+      "dueDate": "",
+      "order": 1777728138388,
+      "createdAt": 1777728138388,
+      "updatedAt": 1777728141356
     }
   ],
   "links": [
@@ -211,7 +254,7 @@
       "id": "seed-link-google-calendar",
       "name": "Google Calendar",
       "url": "https://calendar.google.com/",
-      "description": "나중에 동기화 후보",
+      "description": "동기화 됨",
       "categoryId": "link-reference",
       "tags": [
         "달력",
@@ -220,7 +263,7 @@
       "status": "active",
       "favorite": true,
       "createdAt": 1777722862944,
-      "updatedAt": 1777722862944
+      "updatedAt": 1777727460165
     }
   ],
   "events": [],

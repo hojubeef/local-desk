@@ -262,6 +262,7 @@
     const createdAt = Number(todo.createdAt || Date.now());
     return {
       id: String(todo.id || makeId("todo")),
+      parentId: String(todo.parentId || ""),
       title: String(todo.title || "").trim(),
       notes: String(todo.notes || todo.body || "").trim(),
       categoryId: todo.categoryId || categoryByName(categories, "todos", todo.category, "todo-work"),
@@ -1034,6 +1035,36 @@
     `;
   }
 
+  function getSubTodos(parentId) {
+    return state.data.todos.filter((t) => t.parentId === parentId);
+  }
+
+  function allSubsDone(parentId) {
+    const subs = getSubTodos(parentId);
+    return subs.length === 0 || subs.every((s) => s.status === "done");
+  }
+
+  function isFullyDone(todo) {
+    return todo.status === "done" && allSubsDone(todo.id);
+  }
+
+  function renderSubTodoCard(sub) {
+    const due = sub.dueDate ? formatDateLabel(sub.dueDate) : "";
+    return `
+      <div class="sub-todo ${sub.status === "done" ? "done" : ""}">
+        <div class="sub-todo-content">
+          <span class="sub-todo-title">${escapeHtml(sub.title)}</span>
+          ${due ? `<small>${escapeHtml(due)}</small>` : ""}
+        </div>
+        <div class="sub-todo-actions">
+          <button class="text-button tiny" type="button" data-todo-status="${escapeHtml(sub.id)}" data-status="${sub.status === "done" ? "todo" : "done"}">${sub.status === "done" ? "되돌리기" : "완료"}</button>
+          <button class="text-button tiny" type="button" data-edit-todo="${escapeHtml(sub.id)}">수정</button>
+          <button class="delete-button" type="button" data-delete-todo="${escapeHtml(sub.id)}">삭제</button>
+        </div>
+      </div>
+    `;
+  }
+
   function renderTodoCard(todo, options = {}) {
     const due = todo.dueDate ? formatDateLabel(todo.dueDate) : "마감 없음";
     if (options.compact) {
@@ -1044,6 +1075,19 @@
         </div>
       `;
     }
+    const subs = getSubTodos(todo.id);
+    const subsHtml = subs.length > 0
+      ? `<div class="sub-todo-list">
+           <p class="sub-todo-header">세부 할일 (${subs.filter((s) => s.status === "done").length}/${subs.length})</p>
+           ${subs.sort((a, b) => (a.status === "done") - (b.status === "done") || a.order - b.order).map(renderSubTodoCard).join("")}
+         </div>`
+      : "";
+    const canComplete = allSubsDone(todo.id);
+    const completeButton = todo.status === "done"
+      ? `<button class="text-button tiny" type="button" data-todo-status="${escapeHtml(todo.id)}" data-status="todo">되돌리기</button>`
+      : canComplete
+        ? `<button class="text-button tiny" type="button" data-todo-status="${escapeHtml(todo.id)}" data-status="done">완료</button>`
+        : `<button class="text-button tiny disabled" type="button" title="세부 할일을 먼저 완료하세요" disabled>완료</button>`;
     return `
       <article class="post-card todo-card" data-todo-id="${escapeHtml(todo.id)}">
         <div class="post-meta">
@@ -1056,8 +1100,10 @@
           <span>우선순위 ${escapeHtml(priorityLabels[todo.priority])}</span>
         </div>
         ${renderTags(todo.tags)}
+        ${subsHtml}
         <div class="post-actions">
-          <button class="text-button tiny" type="button" data-todo-status="${escapeHtml(todo.id)}" data-status="${todo.status === "done" ? "todo" : "done"}">${todo.status === "done" ? "되돌리기" : "완료"}</button>
+          ${completeButton}
+          <button class="text-button tiny" type="button" data-add-subtodo="${escapeHtml(todo.id)}">세부 추가</button>
           <button class="text-button tiny" type="button" data-edit-todo="${escapeHtml(todo.id)}">수정</button>
           <button class="delete-button" type="button" data-delete-todo="${escapeHtml(todo.id)}">삭제</button>
         </div>
@@ -1102,7 +1148,7 @@
     const favoriteApps = allApps().filter((app) => app.status === "active" && app.favorite).slice(0, 6);
     const favoriteLinks = state.data.links.filter((link) => link.status === "active" && link.favorite).slice(0, 8);
     const todayTodos = state.data.todos
-      .filter((todo) => todo.status !== "done" && (!todo.dueDate || todo.dueDate <= today))
+      .filter((todo) => !todo.parentId && todo.status !== "done" && (!todo.dueDate || todo.dueDate <= today))
       .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"))
       .slice(0, 6);
     const todayEvents = state.data.events.filter((event) => event.date === today).sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -1135,9 +1181,25 @@
   }
 
   function renderTodos() {
-    const todos = filteredItems("todos", state.data.todos)
-      .sort((a, b) => (a.status === "done") - (b.status === "done") || (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || a.order - b.order);
-    $("#todoList").innerHTML = todos.map((todo) => renderTodoCard(todo)).join("") || empty("조건에 맞는 할 일이 없습니다.");
+    const allTodos = filteredItems("todos", state.data.todos);
+    const topLevel = allTodos.filter((t) => !t.parentId);
+    const sortFn = (a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || a.order - b.order;
+    const active = topLevel.filter((t) => !isFullyDone(t)).sort(sortFn);
+    const done = topLevel.filter((t) => isFullyDone(t)).sort(sortFn);
+
+    let html = "";
+    if (active.length > 0) {
+      html += active.map((todo) => renderTodoCard(todo)).join("");
+    }
+    if (done.length > 0) {
+      html += `
+        <details class="done-section">
+          <summary class="done-section-header">완료 (${done.length})</summary>
+          <div class="done-section-list">${done.map((todo) => renderTodoCard(todo)).join("")}</div>
+        </details>
+      `;
+    }
+    $("#todoList").innerHTML = html || empty("조건에 맞는 할 일이 없습니다.");
     renderCategoryTree("todos");
     renderTagFilters("todos");
   }
@@ -1148,6 +1210,26 @@
     $("#linkList").innerHTML = links.map((link) => renderLinkCard(link)).join("") || empty("조건에 맞는 홈페이지가 없습니다.");
     renderCategoryTree("links");
     renderTagFilters("links");
+  }
+
+  function getKoreanHolidays(year) {
+    const fixed = [
+      [1, 1], [3, 1], [5, 5], [6, 6], [8, 15], [10, 3], [10, 9], [12, 25]
+    ];
+    const holidays = new Set();
+    for (const [m, d] of fixed) {
+      holidays.add(`${year}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+    }
+    return holidays;
+  }
+
+  function getDayClass(day) {
+    const dow = day.getDay();
+    const iso = dateIso(day);
+    const holidays = getKoreanHolidays(day.getFullYear());
+    if (dow === 0 || holidays.has(iso)) return "holiday";
+    if (dow === 6) return "saturday";
+    return "";
   }
 
   function monthMatrix(date) {
@@ -1179,7 +1261,8 @@
       const iso = dateIso(day);
       const muted = day.getMonth() !== new Date().getMonth() ? "muted" : "";
       const hasEvent = eventMap.has(iso) ? "has-event" : "";
-      return `<span class="calendar-mini-day ${muted} ${hasEvent} ${iso === today ? "today" : ""}">${day.getDate()}</span>`;
+      const dayClass = getDayClass(day);
+      return `<span class="calendar-mini-day ${muted} ${hasEvent} ${dayClass} ${iso === today ? "today" : ""}">${day.getDate()}</span>`;
     }).join("");
   }
 
@@ -1193,7 +1276,7 @@
       const events = (eventMap.get(iso) || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
       const muted = day.getMonth() !== month.getMonth() ? "muted" : "";
       return `
-        <div class="calendar-day ${muted} ${iso === today ? "today" : ""}">
+        <div class="calendar-day ${muted} ${getDayClass(day)} ${iso === today ? "today" : ""}">
           <div class="calendar-day-number">${day.getDate()}</div>
           ${events.slice(0, 3).map((event) => `<button class="calendar-event ${event.source === "google" ? "google-event" : ""}" type="button" data-delete-event="${escapeHtml(event.id)}">${escapeHtml(event.startTime ? `${event.startTime} ${event.title}` : event.title)}</button>`).join("")}
           ${events.length > 3 ? `<small>+${events.length - 3}</small>` : ""}
@@ -1305,6 +1388,8 @@
 
   function resetTodoForm() {
     $("#todoEditingId").value = "";
+    $("#todoParentId").value = "";
+    $("#todoParentHint").hidden = true;
     $("#todosHeading").textContent = "할 일 추가";
     $("#saveTodoButton").textContent = "저장";
     $("#cancelTodoEdit").hidden = true;
@@ -1314,10 +1399,31 @@
     $("#todoPriority").value = "normal";
   }
 
+  function startSubTodo(parentId) {
+    const parent = state.data.todos.find((t) => t.id === parentId);
+    if (!parent) return;
+    resetTodoForm();
+    $("#todoParentId").value = parentId;
+    $("#todoParentHint").hidden = false;
+    $("#todoParentName").textContent = parent.title;
+    $("#todosHeading").textContent = "세부 할일 추가";
+    $("#todoCategory").value = parent.categoryId;
+    setSection("todos");
+    $("#todoTitle").focus();
+  }
+
   function editTodo(id) {
     const todo = state.data.todos.find((item) => item.id === id);
     if (!todo) return;
     $("#todoEditingId").value = todo.id;
+    $("#todoParentId").value = todo.parentId || "";
+    if (todo.parentId) {
+      const parent = state.data.todos.find((t) => t.id === todo.parentId);
+      $("#todoParentHint").hidden = false;
+      $("#todoParentName").textContent = parent ? parent.title : "";
+    } else {
+      $("#todoParentHint").hidden = true;
+    }
     $("#todosHeading").textContent = "할 일 수정";
     $("#saveTodoButton").textContent = "수정 저장";
     $("#cancelTodoEdit").hidden = false;
@@ -1333,6 +1439,7 @@
 
   function saveTodoFromForm() {
     const id = $("#todoEditingId").value;
+    const parentId = $("#todoParentId").value || "";
     const payload = {
       title: $("#todoTitle").value.trim(),
       categoryId: $("#todoCategory").value,
@@ -1348,7 +1455,7 @@
       const todo = state.data.todos.find((item) => item.id === id);
       if (todo) Object.assign(todo, payload);
     } else {
-      state.data.todos.push({ id: makeId("todo"), order: Date.now(), createdAt: Date.now(), ...payload });
+      state.data.todos.push({ id: makeId("todo"), parentId, order: Date.now(), createdAt: Date.now(), ...payload });
     }
     saveData();
     resetTodoForm();
@@ -1656,6 +1763,7 @@
 
     $("#cancelPostEdit").addEventListener("click", resetPostForm);
     $("#cancelTodoEdit").addEventListener("click", resetTodoForm);
+    $("#cancelSubTodo").addEventListener("click", resetTodoForm);
     $("#cancelLinkEdit").addEventListener("click", resetLinkForm);
 
     [
@@ -1741,6 +1849,7 @@
       if (event.target.dataset.editTodo) return editTodo(event.target.dataset.editTodo);
       if (event.target.dataset.editLink) return editLink(event.target.dataset.editLink);
       if (event.target.dataset.editApp) return openAppDialog(event.target.dataset.editApp);
+      if (event.target.dataset.addSubtodo) return startSubTodo(event.target.dataset.addSubtodo);
 
       if (event.target.dataset.postStatus) {
         const post = state.data.posts.find((item) => item.id === event.target.dataset.postStatus);
@@ -1775,7 +1884,10 @@
       }
 
       if (event.target.dataset.deletePost) state.data.posts = state.data.posts.filter((item) => item.id !== event.target.dataset.deletePost);
-      else if (event.target.dataset.deleteTodo) state.data.todos = state.data.todos.filter((item) => item.id !== event.target.dataset.deleteTodo);
+      else if (event.target.dataset.deleteTodo) {
+        const delId = event.target.dataset.deleteTodo;
+        state.data.todos = state.data.todos.filter((item) => item.id !== delId && item.parentId !== delId);
+      }
       else if (event.target.dataset.deleteLink) state.data.links = state.data.links.filter((item) => item.id !== event.target.dataset.deleteLink);
       else if (event.target.dataset.deleteEvent) state.data.events = state.data.events.filter((item) => item.id !== event.target.dataset.deleteEvent);
       else if (event.target.dataset.removeCustomApp) state.data.customApps = state.data.customApps.filter((item) => item.id !== event.target.dataset.removeCustomApp);

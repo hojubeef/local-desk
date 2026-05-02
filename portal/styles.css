@@ -2102,3 +2102,113 @@ label {
     min-height: 86px;
   }
 }
+
+/* 세부 할일 */
+.sub-todo-list {
+  margin: 10px 0 6px;
+  padding-left: 16px;
+  border-left: 2px solid var(--border);
+}
+
+.sub-todo-header {
+  font-size: 12px;
+  color: var(--text-2);
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.sub-todo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sub-todo:last-child {
+  border-bottom: none;
+}
+
+.sub-todo.done .sub-todo-title {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.sub-todo-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sub-todo-content small {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.sub-todo-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 완료 섹션 */
+.done-section {
+  margin-top: 16px;
+}
+
+.done-section-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 8px 0;
+  list-style: none;
+  user-select: none;
+}
+
+.done-section-header::-webkit-details-marker {
+  display: none;
+}
+
+.done-section-header::before {
+  content: "▸ ";
+}
+
+.done-section[open] > .done-section-header::before {
+  content: "▾ ";
+}
+
+.done-section-list .post-card {
+  opacity: 0.6;
+}
+
+/* 달력 요일 색상 */
+.calendar-day.holiday .calendar-day-number,
+.calendar-mini-day.holiday {
+  color: #e74c3c;
+}
+
+.calendar-day.saturday .calendar-day-number,
+.calendar-mini-day.saturday {
+  color: #3498db;
+}
+
+.calendar-day.muted.holiday .calendar-day-number,
+.calendar-mini-day.muted.holiday {
+  color: #e74c3c80;
+}
+
+.calendar-day.muted.saturday .calendar-day-number,
+.calendar-mini-day.muted.saturday {
+  color: #3498db80;
+}
+
+/* 비활성 완료 버튼 */
+button.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
