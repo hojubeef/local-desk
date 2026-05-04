@@ -51,6 +51,7 @@ CENTRAL_AGENCIES = [
 KOSIS_OPENAPI_BASE = "https://kosis.kr/openapi"
 LOCAL_TOPIC_VIEW = "MT_GTITLE01"   # e-지방지표(주제별)
 LOCAL_REGION_VIEW = "MT_GTITLE02"  # e-지방지표(지역별)
+ORG_VIEW = "MT_OTITLE01"           # 국내통계 기관별
 SEARCH_MAX_WORKERS = 3
 SEARCH_RESULT_COUNT_PER_TERM = 20
 SEARCH_PRECISION_EVALUATION_LIMIT = 24
@@ -1270,6 +1271,114 @@ class KosisClient:
                 return self.get_statistics_list(LOCAL_REGION_VIEW, region.get("LIST_ID", ""))
         return []
 
+    # ----------------------------------------------------------
+    # 기관별통계 검색
+    # ----------------------------------------------------------
+    def get_org_list(self):
+        """기관별통계 뷰에서 기관 목록을 가져옵니다."""
+        cache_key = ("org_list", "")
+        if cache_key in self._statistics_list_cache:
+            return self._statistics_list_cache[cache_key]
+
+        rows = self.get_statistics_list(ORG_VIEW)
+        self._statistics_list_cache[cache_key] = rows
+        return rows
+
+    def get_org_tables(self, org_list_id):
+        """특정 기관 하위의 통계표 목록을 가져옵니다 (2단계까지 탐색)."""
+        cache_key = ("org_tables", org_list_id)
+        if cache_key in self._statistics_list_cache:
+            return self._statistics_list_cache[cache_key]
+
+        tables = []
+        children = self.get_statistics_list(ORG_VIEW, org_list_id)
+        for child in children:
+            child_id = child.get("LIST_ID", "")
+            if child.get("TBL_ID"):
+                tables.append(child)
+            elif child_id:
+                for grandchild in self.get_statistics_list(ORG_VIEW, child_id):
+                    if grandchild.get("TBL_ID"):
+                        tables.append(grandchild)
+
+        self._statistics_list_cache[cache_key] = tables
+        return tables
+
+    def find_org_by_name(self, name):
+        """기관 목록에서 이름으로 기관을 찾습니다."""
+        for org in self.get_org_list():
+            org_name = org.get("LIST_NM", "")
+            if name in org_name or org_name in name:
+                return org
+        return None
+
+    def search_org_tables(self, org_name, keyword, max_results=30, callback=None):
+        """
+        기관별통계에서 특정 기관의 통계표를 키워드로 검색합니다.
+
+        [흐름]
+        1. 기관 목록에서 기관 찾기 (예: "상주시")
+        2. 해당 기관의 통계표 목록 가져오기
+        3. 키워드로 필터링
+        """
+        org = self.find_org_by_name(org_name)
+        if not org:
+            return []
+
+        org_list_id = org.get("LIST_ID", "")
+        if not org_list_id:
+            return []
+
+        if callback:
+            callback(0, f"[기관별] {org.get('LIST_NM', '')} 통계표 탐색 중...")
+
+        all_tables = self.get_org_tables(org_list_id)
+        expanded_keywords = self._expanded_local_keywords(keyword) if keyword else []
+
+        results = []
+        for idx, table in enumerate(all_tables):
+            tbl_name = table.get("TBL_NM", "")
+            tbl_id = table.get("TBL_ID", "")
+            org_id = table.get("ORG_ID", "")
+            if not tbl_id or not org_id:
+                continue
+
+            if keyword:
+                score = self._score_local_indicator_table(tbl_name, keyword, expanded_keywords)
+                if score <= 0:
+                    continue
+            else:
+                score = 1
+
+            cycle, start_prd, end_prd = self.get_table_period_from_meta(org_id, tbl_id)
+            resolved_org_name = ORG_NAME_BY_ID.get(org_id, table.get("ORG_NM", org_id))
+
+            results.append({
+                "통계표명": tbl_name,
+                "기관명": resolved_org_name,
+                "기관ID": org_id,
+                "통계표ID": tbl_id,
+                "수록기간": f"{start_prd} ~ {end_prd}",
+                "수록주기": cycle,
+                "수록기간시작일": start_prd,
+                "수록기간종료일": end_prd,
+                "행정구역": [org_name],
+                "매칭경로": ["기관별통계"],
+                "기관수준": "지역",
+                "검색소스": "기관별통계",
+                "최종갱신일": table.get("SEND_DE", ""),
+            })
+
+            if callback:
+                progress = int((idx + 1) / len(all_tables) * 100)
+                callback(progress, f"[기관별] {tbl_name[:25]}...")
+
+            if len(results) >= max_results:
+                break
+
+        results.sort(key=lambda r: r.get("지역지표점수", 0) if "지역지표점수" in r else 0, reverse=True)
+        return results
+
     def search_local_indicators(self, sido, sigungu, keyword, max_results=30, callback=None):
         """
         e-지방지표 목록에서 키워드에 맞는 지역 통계표를 찾습니다.
@@ -1654,6 +1763,34 @@ class KosisClient:
             seen.add(key)
             added_local += 1
 
+        # ── 4단계: 기관별통계 검색으로 보강 ──────────────────
+        added_org = 0
+        org_search_name = sigungu if (sigungu and sigungu != "전체") else sido
+        if org_search_name and org_search_name != "전국":
+            if callback:
+                callback(92, f"[기관별] '{org_search_name}' 통계표 탐색 중...")
+
+            def org_callback(progress, message):
+                if callback:
+                    callback(92 + int(progress * 0.06), message)
+
+            try:
+                org_tables = self.search_org_tables(
+                    org_search_name, keyword,
+                    max_results=min(max_results, 15),
+                    callback=org_callback,
+                )
+                for table_info in org_tables:
+                    key = self._table_key(table_info.get('기관ID', ''), table_info.get('통계표ID', ''))
+                    if key in seen:
+                        continue
+                    self.enrich_recommendation(table_info, keyword, region_name=region_name)
+                    table_infos.append(table_info)
+                    seen.add(key)
+                    added_org += 1
+            except Exception as e:
+                print(f"기관별통계 검색 오류 (무시): {e}")
+
         table_infos.sort(
             key=lambda item: (
                 item.get("추천점수", 0),
@@ -1676,7 +1813,7 @@ class KosisClient:
             total_found = sum(len(v) for v in folders.values())
             callback(
                 100,
-                f"완료! 통합검색 {total}건 + 지역지표 {added_local}건, 폴더 {len(folders)}개 생성"
+                f"완료! 통합검색 {total}건 + 지역지표 {added_local}건 + 기관별 {added_org}건, 폴더 {len(folders)}개 생성"
             )
 
         return folders

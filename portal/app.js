@@ -55,14 +55,15 @@
     ]
   };
 
-  const defaultAppMeta = {
-    kosis: { categoryId: "app-stats", tags: ["KOSIS", "통계"], status: "active", favorite: true },
-    "kosis-gui": { categoryId: "app-stats", tags: ["KOSIS", "GUI"], status: "archived", favorite: false },
-    "kosis-debug": { categoryId: "app-tools", tags: ["KOSIS", "점검"], status: "archived", favorite: false },
-    readme: { categoryId: "app-docs", tags: ["문서", "설명"], status: "active", favorite: false }
-  };
-
   const baseApps = Array.isArray(window.portalApps) ? window.portalApps : [];
+  const defaultAppMeta = Object.fromEntries(
+    baseApps.map((app) => [app.id, {
+      categoryId: app.categoryId || "app-tools",
+      tags: app.tags || [],
+      status: app.status || "active",
+      favorite: Boolean(app.favorite)
+    }])
+  );
   const baseAppIds = new Set(baseApps.map((app) => app.id));
 
   const state = {

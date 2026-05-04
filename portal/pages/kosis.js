@@ -652,24 +652,41 @@
     ].join(" ").toLowerCase();
   }
 
+  function collectAgencies(payload) {
+    const agencies = new Set();
+    for (const folder of (payload?.folders || [])) {
+      for (const table of (folder.tables || [])) {
+        if (table.agency) agencies.add(table.agency);
+      }
+    }
+    return [...agencies].sort();
+  }
+
+  function updateAgencyFilter(payload) {
+    const select = $("#agencyFilter");
+    if (!select) return;
+    const current = select.value;
+    const agencies = collectAgencies(payload);
+    select.innerHTML = '<option value="">전체 기관</option>' +
+      agencies.map((a) => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+    if (agencies.includes(current)) select.value = current;
+  }
+
   function filteredFolders(payload) {
     const keyword = ($("#resultSearch")?.value || "").trim().toLowerCase();
+    const agencyFilter = ($("#agencyFilter")?.value || "");
     const folders = payload?.folders || [];
-    if (!keyword) {
-      return folders.map((folder) => ({
-        ...folder,
-        tables: folder.tables || []
-      }));
-    }
 
     return folders
       .map((folder) => {
-        const tables = (folder.tables || []).filter((table) => tableSearchText(table, folder.name).includes(keyword));
-        return {
-          ...folder,
-          count: tables.length,
-          tables
-        };
+        let tables = folder.tables || [];
+        if (agencyFilter) {
+          tables = tables.filter((table) => table.agency === agencyFilter);
+        }
+        if (keyword) {
+          tables = tables.filter((table) => tableSearchText(table, folder.name).includes(keyword));
+        }
+        return { ...folder, count: tables.length, tables };
       })
       .filter((folder) => folder.tables.length > 0);
   }
@@ -677,7 +694,9 @@
   function renderResults(payload) {
     currentPayload = payload;
     $("#resultSearch").value = "";
+    $("#agencyFilter").value = "";
     $("#resultTitle").textContent = `${payload.sido} ${payload.sigungu || ""} ${payload.keyword}`.trim();
+    updateAgencyFilter(payload);
     renderFolderList();
   }
 
@@ -1660,6 +1679,11 @@
       input.addEventListener("change", updateCustomYearWindowState);
     });
     $("#resultSearch").addEventListener("input", () => {
+      if (currentPayload) {
+        renderFolderList();
+      }
+    });
+    $("#agencyFilter").addEventListener("change", () => {
       if (currentPayload) {
         renderFolderList();
       }
