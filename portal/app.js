@@ -70,6 +70,7 @@
     data: loadLocalPortalData(),
     section: "home",
     calendarMonth: new Date(),
+    homeSelectedDate: null,
     serverBacked: false,
     saveTimer: null,
     googleCalendar: {
@@ -1146,22 +1147,32 @@
 
   function renderHome() {
     const today = todayIso();
+    const selectedDate = state.homeSelectedDate || today;
     const favoriteApps = allApps().filter((app) => app.status === "active" && app.favorite).slice(0, 6);
     const favoriteLinks = state.data.links.filter((link) => link.status === "active" && link.favorite).slice(0, 8);
     const todayTodos = state.data.todos
       .filter((todo) => !todo.parentId && todo.status !== "done" && (!todo.dueDate || todo.dueDate <= today))
       .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"))
       .slice(0, 6);
-    const todayEvents = state.data.events.filter((event) => event.date === today).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const selectedEvents = state.data.events
+      .filter((event) => event.date === selectedDate)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
     const recentPosts = [...state.data.posts]
       .filter((post) => post.status === "active")
       .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt))
       .slice(0, 4);
 
+    const homeHeading = $("#homeHeading");
+    if (homeHeading) {
+      homeHeading.textContent = selectedDate === today ? "오늘" : formatDateLabel(selectedDate);
+    }
+
+    const emptyMessage = selectedDate === today ? "오늘 일정이 없습니다." : "이 날 일정이 없습니다.";
+
     $("#homeApps").innerHTML = favoriteApps.map((app) => renderAppCard(app, { compact: true })).join("") || empty("즐겨찾기 기능이 없습니다.");
     $("#homeLinks").innerHTML = favoriteLinks.map((link) => renderLinkCard(link, { compact: true })).join("") || empty("즐겨찾기 홈페이지가 없습니다.");
     $("#homeTodos").innerHTML = todayTodos.map((todo) => renderTodoCard(todo, { compact: true })).join("") || empty("오늘 할 일이 없습니다.");
-    $("#homeTodayEvents").innerHTML = todayEvents.map(renderEventMini).join("") || empty("오늘 일정이 없습니다.");
+    $("#homeTodayEvents").innerHTML = selectedEvents.map(renderEventMini).join("") || empty(emptyMessage);
     $("#recentPosts").innerHTML = recentPosts.map((post) => renderPostCard(post, { compact: true })).join("") || empty("최근 글이 없습니다.");
     renderMiniCalendar();
   }
@@ -1256,6 +1267,7 @@
 
   function renderMiniCalendar() {
     const today = todayIso();
+    const selectedDate = state.homeSelectedDate || today;
     const eventMap = eventsByDate();
     const days = monthMatrix(new Date());
     $("#homeCalendarGrid").innerHTML = days.map((day) => {
@@ -1263,7 +1275,9 @@
       const muted = day.getMonth() !== new Date().getMonth() ? "muted" : "";
       const hasEvent = eventMap.has(iso) ? "has-event" : "";
       const dayClass = getDayClass(day);
-      return `<span class="calendar-mini-day ${muted} ${hasEvent} ${dayClass} ${iso === today ? "today" : ""}">${day.getDate()}</span>`;
+      const isToday = iso === today ? "today" : "";
+      const isSelected = iso === selectedDate ? "selected" : "";
+      return `<button type="button" class="calendar-mini-day ${muted} ${hasEvent} ${dayClass} ${isToday} ${isSelected}" data-home-date="${iso}">${day.getDate()}</button>`;
     }).join("");
   }
 
@@ -1829,6 +1843,13 @@
     });
 
     document.addEventListener("click", (event) => {
+      const homeDateButton = event.target.closest("[data-home-date]");
+      if (homeDateButton) {
+        state.homeSelectedDate = homeDateButton.dataset.homeDate;
+        renderHome();
+        return;
+      }
+
       const categoryButton = event.target.closest("[data-category-filter]");
       if (categoryButton) {
         const type = categoryButton.dataset.categoryType;

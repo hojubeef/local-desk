@@ -641,11 +641,20 @@ label {
   display: grid;
   place-items: center;
   aspect-ratio: 1;
+  padding: 0;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   color: var(--muted);
   font-size: 12px;
+  font-family: inherit;
   background: #111215;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.calendar-mini-day:hover {
+  border-color: #475569;
+  background: #1c1e22;
 }
 
 .calendar-mini-day.muted {
@@ -660,6 +669,19 @@ label {
 
 .calendar-mini-day.has-event {
   box-shadow: inset 0 -3px 0 rgba(125, 211, 252, 0.45);
+}
+
+.calendar-mini-day.selected {
+  border-color: rgba(125, 211, 252, 0.9);
+  color: var(--text);
+  background: rgba(125, 211, 252, 0.22);
+  font-weight: 700;
+}
+
+#homeTodayEvents {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .calendar-layout {
