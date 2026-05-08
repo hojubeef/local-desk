@@ -9,7 +9,7 @@
 
 ```text
 portal/          홈페이지 UI (코어)
-apps/            기능 모듈 (KOSIS 통계 등)
+apps/            기능 모듈 (KOSIS 통계, 보고서 기초자료 등)
 scripts/         실행 스크립트
 local/           이 PC에서만 쓰는 개인 파일 (Git 제외)
 ```
@@ -37,3 +37,8 @@ Local Desk의 Git 탭에서 커밋, 받기, 올리기를 할 수 있습니다.
 - 커밋: 변경사항을 로컬 Git에 기록
 - 받기: GitHub에서 최신 내용 가져오기
 - 올리기: 커밋한 내용을 GitHub에 전송
+
+## 현재 모듈
+
+- `apps/kosis/` — KOSIS 통계 검색, 미리보기, 엑셀 내보내기
+- `apps/report_data/` — 상하수도 보고서 기초자료 후보 추천

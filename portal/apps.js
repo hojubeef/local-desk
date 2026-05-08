@@ -12,6 +12,30 @@ window.portalApps = [
     favorite: true
   },
   {
+    id: "report-data",
+    name: "보고서 기초자료",
+    type: "page",
+    path: "./pages/report_data.html",
+    description: "상하수도 보고서 기초자료 후보 검색",
+    initials: "RD",
+    categoryId: "app-stats",
+    tags: ["보고서", "KOSIS", "상하수도"],
+    status: "active",
+    favorite: true
+  },
+  {
+    id: "overtime-journal",
+    name: "야근일지",
+    type: "page",
+    path: "./pages/overtime.html",
+    description: "채팅 형식 야근일지를 파싱하고 월별·직원별로 집계",
+    initials: "OT",
+    categoryId: "app-tools",
+    tags: ["야근", "집계", "웹하드"],
+    status: "active",
+    favorite: true
+  },
+  {
     id: "kosis-gui",
     name: "KOSIS GUI",
     type: "local",

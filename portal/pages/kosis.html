@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KOSIS 통계 - Local Desk</title>
-  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../styles.css?v=20260507-kosis-search">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.35.0.min.js" charset="utf-8"></script>
-  <script defer src="./kosis.js"></script>
+  <script defer src="./kosis.js?v=20260507-kosis-export-meta"></script>
 </head>
 <body>
   <main class="main page-main">
@@ -43,6 +43,17 @@
           <label>
             <span>키워드</span>
             <input id="keywordInput" type="search" value="인구" required>
+          </label>
+          <label>
+            <span>검색 범위</span>
+            <select id="searchScopeSelect">
+              <option value="combined" selected>KOSIS 전체+지역지표</option>
+              <option value="all">전체+선택지역 기관별</option>
+              <option value="org_only">선택지역 기관별만</option>
+              <option value="environment_agencies">환경부·환경공단</option>
+              <option value="water_agencies">상하수도 주요기관</option>
+            </select>
+            <small class="field-help" id="searchScopeHelp"></small>
           </label>
           <div class="criteria-box">
             <label>

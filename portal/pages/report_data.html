@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>보고서 기초자료 - Local Desk</title>
+  <link rel="stylesheet" href="../styles.css?v=20260507-report-data">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="./report_data.js?v=20260507-report-data"></script>
+</head>
+<body>
+  <main class="main page-main">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Local Desk</p>
+        <h1>보고서 기초자료</h1>
+      </div>
+      <div class="topbar-actions">
+        <a class="text-button link-button" href="../index.html">홈</a>
+      </div>
+    </header>
+
+    <section class="report-data-layout">
+      <aside class="panel report-data-criteria-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">조건</p>
+            <h2>보고서 기준</h2>
+          </div>
+        </div>
+
+        <form class="post-form" id="reportDataForm">
+          <label>
+            <span>보고서</span>
+            <select id="reportSelect"></select>
+          </label>
+          <label>
+            <span>시/도</span>
+            <select id="sidoSelect"></select>
+          </label>
+          <label>
+            <span>시/군/구</span>
+            <select id="sigunguSelect"></select>
+          </label>
+          <label>
+            <span>기준연도</span>
+            <input id="reportYearInput" type="number" min="1900" max="2100" placeholder="예: 2024">
+          </label>
+          <label>
+            <span>조회 기간</span>
+            <select id="yearWindowSelect">
+              <option value="5" selected>최근 5년</option>
+              <option value="10">최근 10년</option>
+              <option value="20">최근 20년</option>
+            </select>
+          </label>
+          <button class="primary-button" type="submit" id="applyCriteriaButton">항목 불러오기</button>
+        </form>
+
+        <div class="status-box" id="statusBox">초기화 중...</div>
+        <div class="report-data-note" id="catalogNote"></div>
+        <div class="report-data-actions">
+          <button class="primary-button small" type="button" id="recommendAllButton" disabled>전체 후보 찾기</button>
+          <button class="text-button" type="button" id="exportWorkbookButton" disabled>Excel 내보내기</button>
+        </div>
+        <div class="api-usage-card">
+          <div>
+            <span>최근 60초</span>
+            <strong id="apiRecent">0/1000회</strong>
+          </div>
+          <div class="api-meter" aria-hidden="true">
+            <span id="apiMeterFill"></span>
+          </div>
+          <div class="api-usage-grid">
+            <p>이번 작업 <strong id="apiSession">0회</strong></p>
+            <p>누적 <strong id="apiTotal">0회</strong></p>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel report-data-items-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">항목</p>
+            <h2 id="itemPanelTitle">기초자료 리스트</h2>
+          </div>
+          <span class="result-count" id="itemCount">0개</span>
+        </div>
+        <div class="report-data-item-list" id="itemList"></div>
+      </section>
+
+      <section class="panel report-data-detail-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">후보</p>
+            <h2 id="detailTitle">항목 선택</h2>
+          </div>
+          <span class="result-count" id="candidateCount"></span>
+        </div>
+        <div class="report-data-detail" id="detailPane">
+          <div class="empty">기초자료 항목을 선택하세요.</div>
+        </div>
+      </section>
+
+      <section class="panel report-data-preview-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">미리보기</p>
+            <h2 id="previewTitle">자료 확인</h2>
+          </div>
+          <span class="result-count" id="previewRowCount"></span>
+        </div>
+        <div class="report-data-preview" id="previewPane">
+          <div class="empty">후보 통계표에서 미리보기를 실행하세요.</div>
+        </div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

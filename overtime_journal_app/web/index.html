@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>야근일지</title>
+  <link rel="stylesheet" href="./styles.css?v=20260507-2">
+  <script defer src="./app.js?v=20260507-2"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Overtime Journal</p>
+        <h1>야근일지</h1>
+      </div>
+      <div class="topbar-actions">
+        <span class="status-pill" id="appStatus">준비 중</span>
+      </div>
+    </header>
+
+    <section class="layout">
+      <section class="workspace">
+        <section class="tab-panel" id="tab-settings">
+          <section class="panel settings-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">설정</p>
+            <h2>내 저장 위치</h2>
+          </div>
+        </div>
+
+        <div class="setup-note">
+          <strong>처음 설정</strong>
+          <ol>
+            <li>데이터 루트 폴더 하나를 선택합니다.</li>
+            <li>루트 안의 직원 폴더를 체크해 수집 대상을 정합니다.</li>
+            <li>내 이름과 같은 직원 폴더에 내 기록이 저장됩니다.</li>
+          </ol>
+        </div>
+
+        <form class="form" id="settingsForm">
+          <label>
+            <span>이름</span>
+            <input id="employeeName" type="text" maxlength="40" autocomplete="name" placeholder="홍길동">
+          </label>
+          <label>
+            <span>데이터 루트 폴더</span>
+            <div class="path-row">
+              <input id="dataRoot" type="text" placeholder="Z:\야근일지데이터">
+              <button class="button success" type="button" id="pickDataRootFolder">폴더 선택</button>
+            </div>
+          </label>
+          <input id="baseFolder" type="hidden">
+          <label class="check-option startup-option">
+            <input id="startupEnabled" type="checkbox">
+            <span>컴퓨터 켤 때 자동 실행</span>
+          </label>
+          <p class="startup-help">체크 후 설정 저장을 누르면 Windows 시작프로그램에 등록됩니다.</p>
+          <button class="button primary" type="submit">설정 저장</button>
+        </form>
+
+        <div class="storage-card">
+          <span>실제 저장 폴더</span>
+          <strong id="journalDirText">-</strong>
+        </div>
+
+        <div class="backup-card">
+          <div>
+            <strong>내 백업</strong>
+            <span>저장/수정/삭제 때 자동 백업되고, 필요하면 직접 만들거나 불러올 수 있습니다.</span>
+          </div>
+          <div class="backup-actions">
+            <button class="button ghost small" type="button" id="createMyBackupButton">백업 만들기</button>
+            <button class="button warning-action small" type="button" id="restoreMyBackupButton">백업 불러오기</button>
+          </div>
+          <small id="myBackupStatus">-</small>
+        </div>
+
+        <div class="divider"></div>
+
+        <details class="settings-section employee-settings-section" open>
+          <summary>
+            <span>
+              <small class="section-label">관리자</small>
+              <strong>수집 직원 선택</strong>
+            </span>
+          </summary>
+          <div class="section-actions">
+            <button class="button success small" type="button" id="refreshEmployeesButton">새로고침</button>
+          </div>
+          <div class="folder-list" id="collectFolderList"></div>
+        </details>
+
+        <div class="divider"></div>
+
+        <div class="panel-head compact">
+          <div>
+            <p class="section-label">출퇴근</p>
+            <h2>기록 폴더</h2>
+          </div>
+          <button class="button success small" type="button" id="addAttendanceFolder">추가</button>
+        </div>
+        <div class="folder-list" id="attendanceFolderList"></div>
+
+        <form class="form compact-form" id="attendanceOptionsForm">
+          <div class="time-option-grid">
+            <label>
+              <span>확인 기준</span>
+              <input id="lateThreshold" type="time" value="18:30">
+            </label>
+            <label>
+              <span>야근 시작</span>
+              <input id="overtimeStart" type="time" value="18:00">
+            </label>
+          </div>
+          <label class="check-option">
+            <input id="hideOldIssues" type="checkbox" checked>
+            <span>이번 달 전 확인 필요 숨김</span>
+          </label>
+          <label class="check-option">
+            <input id="ignoreMissingCheckIn" type="checkbox" checked>
+            <span>출근 기록 없음 무시</span>
+          </label>
+          <label class="check-option">
+            <input id="ignoreMissingCheckOut" type="checkbox" checked>
+            <span>퇴근 기록 없음 무시</span>
+          </label>
+          <button class="button primary small" type="submit">옵션 저장</button>
+        </form>
+          </section>
+        </section>
+        <nav class="tabs" aria-label="야근일지 화면">
+          <button class="tab active" type="button" data-tab="quick">빠른 입력</button>
+          <button class="tab" type="button" data-tab="records">내 현황</button>
+          <button class="tab" type="button" data-tab="employees">직원별 현황</button>
+          <button class="tab" type="button" data-tab="admin">전체 집계</button>
+          <button class="tab" type="button" data-tab="settings">설정</button>
+        </nav>
+
+        <section class="tab-panel active" id="tab-quick">
+          <div class="quick-workbench">
+            <section class="panel quick-tools-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">도구</p>
+                  <h2>빠른 입력 준비</h2>
+                </div>
+              </div>
+
+              <div class="quick-date-card">
+                <div class="mini-head">
+                  <strong>날짜 바로 넣기</strong>
+                  <span>날짜를 누르면 기본 연장근무 시간이 입력됩니다.</span>
+                </div>
+                <div class="head-actions compact-actions">
+                  <button class="button ghost small" type="button" id="quickPrevMonth">이전</button>
+                  <strong id="quickCalendarTitle">-</strong>
+                  <button class="button ghost small" type="button" id="quickNextMonth">다음</button>
+                </div>
+                <div class="mini-calendar" id="quickCalendar"></div>
+              </div>
+
+              <div class="proxy-card">
+                <label class="check-option">
+                  <input id="proxyModeEnabled" type="checkbox">
+                  <span>대리 입력 모드</span>
+                </label>
+                <div class="proxy-actions">
+                  <button class="button edit-action small" type="button" id="proxyCheckButton">직원 퇴근 확인</button>
+                  <button class="button warning-action small" type="button" id="proxyDraftButton">어제 대리 초안</button>
+                </div>
+                <small id="proxyStatus">직원 이름 줄 아래에 해당 직원 야근일지를 적으면 직원별 폴더로 저장됩니다.</small>
+                <div class="proxy-check-list" id="proxyCheckList"></div>
+              </div>
+
+              <div class="quick-lists">
+                <section>
+                  <div class="mini-head">
+                    <strong>과업명</strong>
+                    <span>자주 나온 과업명을 눌러 입력합니다.</span>
+                  </div>
+                  <div class="chip-list" id="taskChips"></div>
+                </section>
+                <section>
+                  <div class="mini-head">
+                    <strong>최근 업무내용</strong>
+                    <span>이전에 적은 문장을 다시 넣습니다.</span>
+                  </div>
+                  <div class="chip-list" id="recentWorkChips"></div>
+                </section>
+              </div>
+
+              <div class="suggestion-box" id="attendanceSuggestionPane">
+                <div class="empty compact">출퇴근 기록 폴더를 등록하면 늦은 퇴근 기록을 확인합니다.</div>
+              </div>
+            </section>
+
+            <section class="panel quick-input-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">입력</p>
+                  <h2>채팅 형식 입력</h2>
+                </div>
+                <button class="button ghost small" type="button" id="sampleButton">예시</button>
+              </div>
+
+              <textarea id="quickText" class="quick-text" spellcheck="false" placeholder="2026.05.06(수) 18:00~20:00&#10;2026년도 하수도 맨홀추락방지시설 설치공사(3차) 도면 작업"></textarea>
+
+              <div class="button-help">
+                <span><b>출퇴근 확인</b> 늦은 퇴근인데 일지가 없는 날짜를 찾습니다.</span>
+                <span><b>미리보기</b> 붙여넣은 내용을 날짜, 시간, 업무로 나눕니다.</span>
+                <span><b>저장</b> 내 웹하드 폴더에 JSON 기록을 남깁니다.</span>
+              </div>
+              <div class="actions">
+                <button class="button warning-action" type="button" id="checkAttendanceButton">출퇴근 확인</button>
+                <button class="button edit-action" type="button" id="parseButton">미리보기</button>
+                <button class="button success" type="button" id="saveParsedButton" disabled>저장</button>
+              </div>
+            </section>
+
+            <section class="panel quick-preview-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">확인</p>
+                  <h2>인식 결과</h2>
+                </div>
+                <span class="result-count" id="previewCount">0건</span>
+              </div>
+              <div class="preview" id="previewPane">
+                <div class="empty">입력 내용을 붙여넣고 미리보기를 누르세요.</div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-records">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">내 기록</p>
+                <h2>월별 합계</h2>
+              </div>
+              <div class="head-actions">
+                <input id="recordsMonth" class="month-input" type="month">
+                <button class="button ghost small" type="button" id="reloadMine">새로고침</button>
+              </div>
+            </div>
+            <div class="summary-cards" id="mySummaryCards"></div>
+            <div class="issue-strip" id="myIssueStrip"></div>
+            <div class="limit-alerts" id="myLimitAlerts"></div>
+            <div class="wage-panel">
+              <label>
+                <span>야간시급</span>
+                <input id="nightHourlyWage" type="number" min="0" step="100" placeholder="예: 15000">
+              </label>
+              <button class="button primary small" type="button" id="saveWageButton">시급 저장</button>
+              <div id="wageSummary" class="wage-summary"></div>
+            </div>
+            <div class="weekly-summary" id="weeklySummary"></div>
+          </section>
+
+          <div class="grid calendar-grid-wrap">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">달력</p>
+                  <h2 id="myCalendarTitle">월간 보기</h2>
+                </div>
+                <div class="head-actions">
+                  <button class="button ghost small" type="button" id="prevMonth">이전</button>
+                  <button class="button ghost small" type="button" id="nextMonth">다음</button>
+                </div>
+              </div>
+              <div class="calendar" id="myCalendar"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">상세</p>
+                  <h2 id="selectedDayTitle">날짜 선택</h2>
+                </div>
+              </div>
+              <div class="mini-list" id="selectedDayEntries">
+                <div class="empty">달력에서 날짜를 선택하세요.</div>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">원본</p>
+                <h2>내 기록 목록</h2>
+              </div>
+            </div>
+            <div class="table-wrap" id="myEntriesTable"></div>
+          </section>
+        </section>
+
+        <section class="tab-panel" id="tab-employees">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">직원별</p>
+                <h2>직원 현황</h2>
+              </div>
+              <div class="head-actions">
+                <select id="employeeStatusSelect" class="employee-select" title="확인할 직원 선택"></select>
+                <input id="employeeMonth" class="month-input" type="month">
+                <button class="button ghost small" type="button" id="reloadEmployees">수집</button>
+              </div>
+            </div>
+            <div class="summary-cards" id="employeeSummaryCards"></div>
+            <div class="issue-strip" id="employeeIssueStrip"></div>
+            <div class="limit-alerts" id="employeeLimitAlerts"></div>
+            <div class="weekly-summary" id="employeeWeeklySummary"></div>
+          </section>
+
+          <div class="grid calendar-grid-wrap">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">달력</p>
+                  <h2 id="employeeCalendarTitle">월간 보기</h2>
+                </div>
+                <div class="head-actions">
+                  <button class="button ghost small" type="button" id="employeePrevMonth">이전</button>
+                  <button class="button ghost small" type="button" id="employeeNextMonth">다음</button>
+                </div>
+              </div>
+              <div class="calendar" id="employeeCalendar"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">상세</p>
+                  <h2 id="employeeSelectedDayTitle">날짜 선택</h2>
+                </div>
+              </div>
+              <div class="mini-list" id="employeeSelectedDayEntries">
+                <div class="empty">직원 달력에서 날짜를 선택하세요.</div>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">원본</p>
+                <h2>직원 기록 목록</h2>
+              </div>
+            </div>
+            <div class="table-wrap" id="employeeEntriesTable"></div>
+          </section>
+        </section>
+
+        <section class="tab-panel" id="tab-admin">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">전체</p>
+                <h2>직원별 집계</h2>
+              </div>
+              <div class="head-actions">
+                <input id="adminMonth" class="month-input" type="month">
+                <select id="adminEmployeeFilter" class="employee-select" title="백업할 직원 선택">
+                  <option value="">전체</option>
+                </select>
+                <button class="button success small" type="button" id="collectButton">수집</button>
+                <button class="button ghost small" type="button" id="adminBackupButton">백업</button>
+                <button class="button warning-action small" type="button" id="adminRestoreButton">복원</button>
+                <button class="button primary small" type="button" id="exportCsvButton" disabled>CSV</button>
+              </div>
+            </div>
+            <div class="backup-status" id="adminBackupStatus"></div>
+            <div class="approval-panel">
+              <div class="mini-head">
+                <strong>결재 확인</strong>
+                <span>수집 목록에서 여러 건을 체크해 결재 올림 처리하고, 결재 완료 목록을 붙여넣어 비교합니다.</span>
+              </div>
+              <div class="approval-actions">
+                <button class="button edit-action small" type="button" id="submitApprovalButton">선택 결재 올림</button>
+                <button class="button ghost small" type="button" id="cancelApprovalButton">선택 올림 취소</button>
+                <button class="button warning-action small" type="button" id="compareApprovalButton">결재 완료 비교</button>
+              </div>
+              <textarea id="approvalText" rows="5" spellcheck="false" placeholder="노용주 2026-04-23 18:00 ~ 20:00 02:00&#10;박원준 2026-04-23 18:00 ~ 21:00 03:00"></textarea>
+              <div id="approvalResult" class="approval-result"></div>
+            </div>
+            <div class="summary-cards" id="adminSummaryCards"></div>
+            <div class="table-wrap" id="adminIssuesTable"></div>
+            <div class="table-wrap" id="adminSummaryTable"></div>
+          </section>
+
+          <div class="grid calendar-grid-wrap">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">전체 달력</p>
+                  <h2 id="adminCalendarTitle">월간 보기</h2>
+                </div>
+                <div class="head-actions">
+                  <button class="button ghost small" type="button" id="adminPrevMonth">이전</button>
+                  <button class="button ghost small" type="button" id="adminNextMonth">다음</button>
+                </div>
+              </div>
+              <div class="calendar" id="adminCalendar"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">상세</p>
+                  <h2 id="adminSelectedDayTitle">날짜 선택</h2>
+                </div>
+              </div>
+              <div class="mini-list" id="adminSelectedDayEntries">
+                <div class="empty">전체 달력에서 날짜를 선택하세요.</div>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">원본</p>
+                <h2>수집된 기록</h2>
+              </div>
+              <span class="result-count" id="adminEntryCount">0건</span>
+            </div>
+            <div class="table-wrap" id="adminEntriesTable"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">휴지통</p>
+                <h2>대리 삭제 기록</h2>
+              </div>
+              <div class="head-actions">
+                <button class="button ghost small" type="button" id="refreshTrashButton">새로고침</button>
+                <span class="result-count" id="adminTrashCount">0건</span>
+              </div>
+            </div>
+            <div class="table-wrap" id="adminTrashTable"></div>
+          </section>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="modal" id="editDialog">
+    <form class="modal-card" id="editForm">
+      <input id="editId" type="hidden">
+      <div class="panel-head">
+        <div>
+          <p class="section-label">수정</p>
+          <h2>야근일지 수정</h2>
+        </div>
+        <button class="icon-text" type="button" id="closeEditDialog">닫기</button>
+      </div>
+      <div class="edit-grid">
+        <label>
+          <span>날짜</span>
+          <input id="editDate" type="date" required>
+        </label>
+        <label>
+          <span>시작</span>
+          <input id="editStartTime" type="time" required>
+        </label>
+        <label>
+          <span>종료</span>
+          <input id="editEndTime" type="time" required>
+        </label>
+      </div>
+      <label>
+        <span>업무내용</span>
+        <textarea id="editWork" rows="5" required></textarea>
+      </label>
+      <div class="history-box" id="editHistoryBox"></div>
+      <div class="actions">
+        <button class="button ghost" type="button" id="cancelEditButton">취소</button>
+        <button class="button primary" type="submit">수정 저장</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,413 @@
+{
+  "version": "2026-05-07",
+  "note": "상하수도 관련 보고서 기초조사 항목의 1차 초안입니다. 지침 원문 표 단위와 완전히 일치한다고 단정하지 말고, 후보 자료를 검토한 뒤 사용하세요.",
+  "reports": [
+    {
+      "id": "water_supply_basic_plan",
+      "name": "수도정비기본계획",
+      "shortName": "수도정비",
+      "domain": "water_supply",
+      "basisNote": "상수도 시설 현황, 급수 현황, 수요 전망에 자주 쓰는 기초자료 중심 초안입니다.",
+      "items": [
+        {
+          "id": "admin_area",
+          "name": "행정구역 및 면적",
+          "description": "시/군 행정구역, 면적, 읍면동 구성",
+          "searchKeyword": "행정구역",
+          "keywords": ["행정구역", "면적", "읍면동"]
+        },
+        {
+          "id": "natural_conditions",
+          "name": "자연조건",
+          "description": "지형, 기상, 하천 등 계획 대상지의 자연 여건",
+          "searchKeyword": "기상",
+          "keywords": ["기상", "강수량", "기온", "하천"]
+        },
+        {
+          "id": "population",
+          "name": "인구 현황",
+          "description": "주민등록인구, 세대수, 읍면동별 인구",
+          "searchKeyword": "인구",
+          "keywords": ["인구", "주민등록인구", "세대수"]
+        },
+        {
+          "id": "future_population",
+          "name": "장래인구",
+          "description": "계획 기준연도 이후 인구 전망",
+          "searchKeyword": "장래인구",
+          "keywords": ["장래인구", "추계인구", "인구추계"]
+        },
+        {
+          "id": "land_use",
+          "name": "토지이용 및 개발계획",
+          "description": "토지이용, 용도지역, 개발사업 현황",
+          "searchKeyword": "토지이용",
+          "keywords": ["토지이용", "용도지역", "개발계획"]
+        },
+        {
+          "id": "industry",
+          "name": "산업 및 사업체",
+          "description": "산업구조, 사업체, 종사자 수",
+          "searchKeyword": "사업체",
+          "keywords": ["사업체", "종사자", "산업"]
+        },
+        {
+          "id": "water_supply_coverage",
+          "name": "상수도 보급",
+          "description": "상수도 보급률, 급수구역, 미급수지역",
+          "searchKeyword": "상수도",
+          "keywords": ["상수도", "상수도보급률", "급수구역"]
+        },
+        {
+          "id": "served_population",
+          "name": "급수인구",
+          "description": "급수인구, 미급수인구, 보급률 산정 자료",
+          "searchKeyword": "급수인구",
+          "keywords": ["급수인구", "상수도", "상수도보급률"]
+        },
+        {
+          "id": "water_supply_volume",
+          "name": "급수량",
+          "description": "총급수량, 1일 평균 급수량, 용도별 급수량",
+          "searchKeyword": "급수량",
+          "keywords": ["급수량", "상수도", "사용량"]
+        },
+        {
+          "id": "per_capita_supply",
+          "name": "1인 1일 급수량",
+          "description": "1인 1일 평균 급수량, 원단위 검토",
+          "searchKeyword": "1인1일 급수량",
+          "keywords": ["1인1일", "급수량", "상수도"]
+        },
+        {
+          "id": "revenue_water_rate",
+          "name": "유수율 및 누수율",
+          "description": "유수율, 누수율, 무수수량, 유효수량",
+          "searchKeyword": "유수율",
+          "keywords": ["유수율", "누수율", "무수수량"]
+        },
+        {
+          "id": "water_facilities",
+          "name": "상수도 시설",
+          "description": "취수장, 정수장, 배수지, 가압장 등 시설 현황",
+          "searchKeyword": "상수도시설",
+          "keywords": ["상수도시설", "정수장", "배수지", "취수장"]
+        },
+        {
+          "id": "water_pipes",
+          "name": "송배수관로",
+          "description": "송수관, 배수관, 급수관 등 관로 현황",
+          "searchKeyword": "상수도관",
+          "keywords": ["상수도관", "관로", "송수관", "배수관"]
+        },
+        {
+          "id": "water_fee_finance",
+          "name": "수도요금 및 재정",
+          "description": "수도요금, 생산원가, 재정수지",
+          "searchKeyword": "수도요금",
+          "keywords": ["수도요금", "상수도요금", "원가", "재정"]
+        },
+        {
+          "id": "water_quality",
+          "name": "수질",
+          "description": "상수원 및 정수 수질 관련 자료",
+          "searchKeyword": "수질",
+          "keywords": ["수질", "상수원", "정수"]
+        }
+      ]
+    },
+    {
+      "id": "sewer_basic_plan",
+      "name": "하수도정비기본계획",
+      "shortName": "하수도정비",
+      "domain": "sewer",
+      "basisNote": "하수처리구역, 하수 발생량, 시설·관로 현황에 자주 쓰는 기초자료 중심 초안입니다.",
+      "items": [
+        {
+          "id": "admin_area",
+          "name": "행정구역 및 면적",
+          "description": "시/군 행정구역, 면적, 읍면동 구성",
+          "searchKeyword": "행정구역",
+          "keywords": ["행정구역", "면적", "읍면동"]
+        },
+        {
+          "id": "natural_conditions",
+          "name": "자연조건",
+          "description": "지형, 하천, 강우 등 하수도 계획 여건",
+          "searchKeyword": "강수량",
+          "keywords": ["강수량", "기상", "하천", "수계"]
+        },
+        {
+          "id": "population",
+          "name": "인구 현황",
+          "description": "주민등록인구, 세대수, 읍면동별 인구",
+          "searchKeyword": "인구",
+          "keywords": ["인구", "주민등록인구", "세대수"]
+        },
+        {
+          "id": "future_population",
+          "name": "장래인구",
+          "description": "하수량 산정에 필요한 장래 인구 전망",
+          "searchKeyword": "장래인구",
+          "keywords": ["장래인구", "추계인구", "인구추계"]
+        },
+        {
+          "id": "land_use",
+          "name": "토지이용 및 개발계획",
+          "description": "토지이용, 용도지역, 개발사업 현황",
+          "searchKeyword": "토지이용",
+          "keywords": ["토지이용", "용도지역", "개발계획"]
+        },
+        {
+          "id": "sewer_service_area",
+          "name": "하수처리구역",
+          "description": "하수처리구역, 배수구역, 처리분구",
+          "searchKeyword": "하수처리구역",
+          "keywords": ["하수처리구역", "하수도", "처리구역"]
+        },
+        {
+          "id": "sewer_coverage",
+          "name": "하수도 보급",
+          "description": "하수도 보급률, 공공하수처리 인구",
+          "searchKeyword": "하수도보급률",
+          "keywords": ["하수도보급률", "하수도", "보급률"]
+        },
+        {
+          "id": "sewer_population",
+          "name": "하수처리인구",
+          "description": "공공하수처리 인구, 미처리 인구",
+          "searchKeyword": "하수처리인구",
+          "keywords": ["하수처리인구", "하수도", "처리인구"]
+        },
+        {
+          "id": "sewage_generation",
+          "name": "오수 및 하수 발생량",
+          "description": "생활오수, 영업오수, 공장폐수 등 발생량",
+          "searchKeyword": "하수발생량",
+          "keywords": ["하수발생량", "오수", "폐수", "하수도"]
+        },
+        {
+          "id": "night_soil",
+          "name": "분뇨",
+          "description": "분뇨 발생량, 수거·처리 현황",
+          "searchKeyword": "분뇨",
+          "keywords": ["분뇨", "분뇨처리", "오수"]
+        },
+        {
+          "id": "sewer_treatment_facilities",
+          "name": "공공하수처리시설",
+          "description": "하수처리장, 시설용량, 처리량",
+          "searchKeyword": "하수처리시설",
+          "keywords": ["하수처리시설", "하수처리장", "시설용량"]
+        },
+        {
+          "id": "small_sewer_facilities",
+          "name": "소규모 공공하수처리시설",
+          "description": "소규모 처리시설 현황과 처리용량",
+          "searchKeyword": "소규모 하수처리시설",
+          "keywords": ["소규모", "하수처리시설", "마을하수도"]
+        },
+        {
+          "id": "sewer_pipes",
+          "name": "하수관로",
+          "description": "오수관, 우수관, 합류식 관로 현황",
+          "searchKeyword": "하수관로",
+          "keywords": ["하수관로", "오수관", "우수관", "합류식"]
+        },
+        {
+          "id": "sewer_fee_finance",
+          "name": "하수도 사용료 및 재정",
+          "description": "하수도 사용료, 처리원가, 재정 현황",
+          "searchKeyword": "하수도 사용료",
+          "keywords": ["하수도사용료", "하수도 사용료", "원가", "재정"]
+        },
+        {
+          "id": "receiving_water_quality",
+          "name": "방류수역 및 수질",
+          "description": "방류수역, 수질오염, 방류수 수질",
+          "searchKeyword": "방류수 수질",
+          "keywords": ["방류수", "수질", "수질오염"]
+        }
+      ]
+    },
+    {
+      "id": "water_demand_management_plan",
+      "name": "물수요관리 종합계획",
+      "shortName": "물수요관리",
+      "domain": "water_demand",
+      "basisNote": "수요관리 목표 설정과 절수·재이용 실적 검토에 필요한 항목 중심 초안입니다.",
+      "items": [
+        {
+          "id": "supply_area",
+          "name": "행정구역 및 급수구역",
+          "description": "계획 대상 행정구역과 급수구역",
+          "searchKeyword": "상수도",
+          "keywords": ["행정구역", "급수구역", "상수도"]
+        },
+        {
+          "id": "population",
+          "name": "인구 및 장래인구",
+          "description": "현재 인구와 장래 인구 전망",
+          "searchKeyword": "장래인구",
+          "keywords": ["인구", "장래인구", "추계인구"]
+        },
+        {
+          "id": "water_supply_coverage",
+          "name": "상수도 보급",
+          "description": "보급률, 급수인구, 급수구역",
+          "searchKeyword": "상수도",
+          "keywords": ["상수도", "상수도보급률", "급수인구"]
+        },
+        {
+          "id": "water_supply_volume",
+          "name": "급수량",
+          "description": "총급수량, 평균 급수량",
+          "searchKeyword": "급수량",
+          "keywords": ["급수량", "상수도", "사용량"]
+        },
+        {
+          "id": "use_by_purpose",
+          "name": "용도별 물사용량",
+          "description": "가정용, 영업용, 공업용 등 용도별 사용량",
+          "searchKeyword": "용도별 사용량",
+          "keywords": ["용도별", "사용량", "상수도"]
+        },
+        {
+          "id": "per_capita_use",
+          "name": "1인 1일 물사용량",
+          "description": "1인당 물사용량과 원단위",
+          "searchKeyword": "1인1일 급수량",
+          "keywords": ["1인1일", "급수량", "사용량"]
+        },
+        {
+          "id": "revenue_water_rate",
+          "name": "유수율 및 누수율",
+          "description": "유수율, 누수율, 무수수량",
+          "searchKeyword": "유수율",
+          "keywords": ["유수율", "누수율", "무수수량"]
+        },
+        {
+          "id": "water_tariff",
+          "name": "수도요금",
+          "description": "수도요금, 업종별 요율, 사용료",
+          "searchKeyword": "수도요금",
+          "keywords": ["수도요금", "상수도요금", "사용료"]
+        },
+        {
+          "id": "water_saving_devices",
+          "name": "절수설비 및 절수기기",
+          "description": "절수설비 보급, 절수기기 설치 현황",
+          "searchKeyword": "절수",
+          "keywords": ["절수", "절수설비", "절수기기"]
+        },
+        {
+          "id": "greywater",
+          "name": "중수도",
+          "description": "중수도 설치 및 이용 현황",
+          "searchKeyword": "중수도",
+          "keywords": ["중수도", "물재이용", "재이용"]
+        },
+        {
+          "id": "rainwater",
+          "name": "빗물이용",
+          "description": "빗물이용시설 설치 및 이용 현황",
+          "searchKeyword": "빗물이용",
+          "keywords": ["빗물이용", "빗물이용시설", "물재이용"]
+        },
+        {
+          "id": "wastewater_reuse",
+          "name": "하·폐수처리수 재이용",
+          "description": "하수처리수, 폐수처리수 재이용 현황",
+          "searchKeyword": "하수처리수 재이용",
+          "keywords": ["하수처리수", "폐수처리수", "재이용"]
+        },
+        {
+          "id": "past_management_results",
+          "name": "기존 물수요관리 실적",
+          "description": "이전 계획의 수요관리 목표와 달성 실적",
+          "searchKeyword": "물수요관리",
+          "keywords": ["물수요관리", "절수", "유수율"]
+        }
+      ]
+    },
+    {
+      "id": "water_reuse_plan",
+      "name": "물 재이용 관리계획",
+      "shortName": "물 재이용",
+      "domain": "water_reuse",
+      "basisNote": "물 재이용 수요처, 공급원, 기존 재이용시설 운영 현황 중심 초안입니다.",
+      "items": [
+        {
+          "id": "admin_population",
+          "name": "행정구역 및 인구",
+          "description": "행정구역, 인구, 장래인구",
+          "searchKeyword": "인구",
+          "keywords": ["행정구역", "인구", "장래인구"]
+        },
+        {
+          "id": "water_use",
+          "name": "물 이용 현황",
+          "description": "상수도 사용량, 용도별 물 이용",
+          "searchKeyword": "물사용량",
+          "keywords": ["물사용량", "급수량", "상수도"]
+        },
+        {
+          "id": "sewage_treatment",
+          "name": "하수 발생 및 처리",
+          "description": "하수 발생량, 처리량, 처리구역",
+          "searchKeyword": "하수도",
+          "keywords": ["하수도", "하수발생량", "하수처리"]
+        },
+        {
+          "id": "public_sewer_facilities",
+          "name": "공공하수처리시설",
+          "description": "하수처리장, 시설용량, 처리량",
+          "searchKeyword": "하수처리시설",
+          "keywords": ["하수처리시설", "하수처리장", "시설용량"]
+        },
+        {
+          "id": "treated_sewage_reuse",
+          "name": "하수처리수 재이용",
+          "description": "하수처리수 재이용량과 용도",
+          "searchKeyword": "하수처리수 재이용",
+          "keywords": ["하수처리수", "재이용", "하수도"]
+        },
+        {
+          "id": "greywater",
+          "name": "중수도",
+          "description": "중수도 설치 및 이용 현황",
+          "searchKeyword": "중수도",
+          "keywords": ["중수도", "물재이용", "재이용"]
+        },
+        {
+          "id": "rainwater",
+          "name": "빗물이용",
+          "description": "빗물이용시설 설치 및 이용 현황",
+          "searchKeyword": "빗물이용",
+          "keywords": ["빗물이용", "빗물이용시설", "물재이용"]
+        },
+        {
+          "id": "industrial_wastewater_reuse",
+          "name": "폐수처리수 재이용",
+          "description": "공공폐수처리시설 처리수 재이용 현황",
+          "searchKeyword": "폐수처리수 재이용",
+          "keywords": ["폐수처리수", "폐수", "재이용"]
+        },
+        {
+          "id": "reuse_demand",
+          "name": "재이용 가능 수요처",
+          "description": "공업용수, 조경용수, 농업용수 등 잠재 수요처",
+          "searchKeyword": "재이용",
+          "keywords": ["재이용", "공업용수", "농업용수", "조경용수"]
+        },
+        {
+          "id": "reuse_facility_results",
+          "name": "기존 재이용시설 운영실적",
+          "description": "재이용시설 운영, 공급량, 이용량 실적",
+          "searchKeyword": "물재이용",
+          "keywords": ["물재이용", "재이용시설", "운영실적"]
+        }
+      ]
+    }
+  ]
+}

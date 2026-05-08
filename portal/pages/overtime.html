@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>야근일지 - Local Desk</title>
+  <link rel="stylesheet" href="../styles.css?v=20260507-overtime">
+  <script defer src="./overtime.js?v=20260507-overtime"></script>
+</head>
+<body>
+  <main class="main page-main overtime-page">
+    <header class="topbar overtime-topbar">
+      <div>
+        <p class="eyebrow">Local Desk</p>
+        <h1>야근일지</h1>
+      </div>
+      <div class="topbar-actions">
+        <a class="text-button link-button" href="../index.html">홈</a>
+      </div>
+    </header>
+
+    <section class="overtime-shell">
+      <aside class="panel overtime-settings-panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">설정</p>
+            <h2>내 저장 위치</h2>
+          </div>
+        </div>
+
+        <form class="post-form" id="settingsForm">
+          <label>
+            <span>이름</span>
+            <input id="employeeName" type="text" maxlength="40" autocomplete="name" placeholder="홍길동">
+          </label>
+          <label>
+            <span>웹하드/공유드라이브 폴더</span>
+            <div class="overtime-path-row">
+              <input id="baseFolder" type="text" placeholder="Z:\홍길동">
+              <button class="text-button" type="button" id="pickBaseFolder">선택</button>
+            </div>
+          </label>
+          <label>
+            <span>관리자 수집 폴더</span>
+            <div class="overtime-path-row">
+              <input id="adminRoot" type="text" placeholder="\\server\users">
+              <button class="text-button" type="button" id="pickAdminRoot">선택</button>
+            </div>
+          </label>
+          <button class="primary-button" type="submit">설정 저장</button>
+        </form>
+
+        <div class="status-box" id="statusBox">준비 중...</div>
+        <div class="overtime-storage-card">
+          <span>실제 저장 폴더</span>
+          <strong id="journalDirText">-</strong>
+        </div>
+      </aside>
+
+      <section class="overtime-workspace">
+        <nav class="overtime-tabs" aria-label="야근일지 보기">
+          <button class="overtime-tab active" type="button" data-tab="quick">빠른 입력</button>
+          <button class="overtime-tab" type="button" data-tab="records">내 기록</button>
+          <button class="overtime-tab" type="button" data-tab="calendar">달력</button>
+          <button class="overtime-tab" type="button" data-tab="admin">관리자 집계</button>
+        </nav>
+
+        <section class="overtime-tab-panel active" id="tab-quick">
+          <div class="overtime-grid two">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">붙여넣기</p>
+                  <h2>채팅 형식 입력</h2>
+                </div>
+                <button class="text-button tiny" type="button" id="sampleButton">예시</button>
+              </div>
+              <textarea id="quickText" class="overtime-quick-text" rows="13" spellcheck="false" placeholder="2026.05.06(수) 18:00~20:00&#10;2026년도 하수도 맨홀추락방지시설 설치공사(3차) 도면 작업"></textarea>
+              <div class="overtime-actions">
+                <button class="text-button" type="button" id="parseButton">미리보기</button>
+                <button class="primary-button" type="button" id="saveParsedButton" disabled>저장</button>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">확인</p>
+                  <h2>인식 결과</h2>
+                </div>
+                <span class="result-count" id="previewCount">0건</span>
+              </div>
+              <div class="overtime-preview" id="previewPane">
+                <div class="empty">입력 내용을 붙여넣고 미리보기를 누르세요.</div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="overtime-tab-panel" id="tab-records">
+          <div class="overtime-grid records">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">내 기록</p>
+                  <h2>월별 합계</h2>
+                </div>
+                <div class="panel-head-actions">
+                  <input id="recordsMonth" class="overtime-month-input" type="month">
+                  <button class="text-button tiny" type="button" id="reloadMine">새로고침</button>
+                </div>
+              </div>
+              <div class="overtime-summary-cards" id="mySummaryCards"></div>
+              <div class="overtime-table-wrap" id="myEntriesTable"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="overtime-tab-panel" id="tab-calendar">
+          <div class="overtime-grid calendar">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">달력</p>
+                  <h2 id="calendarTitle">월간 보기</h2>
+                </div>
+                <div class="panel-head-actions">
+                  <button class="text-button tiny" type="button" id="prevOvertimeMonth">이전</button>
+                  <button class="text-button tiny" type="button" id="nextOvertimeMonth">다음</button>
+                </div>
+              </div>
+              <div class="overtime-calendar" id="overtimeCalendar"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">상세</p>
+                  <h2 id="selectedDayTitle">날짜 선택</h2>
+                </div>
+              </div>
+              <div class="mini-list" id="selectedDayEntries">
+                <div class="empty">달력에서 날짜를 선택하세요.</div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="overtime-tab-panel" id="tab-admin">
+          <div class="overtime-grid admin">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">관리자</p>
+                  <h2>전체 집계</h2>
+                </div>
+                <div class="panel-head-actions">
+                  <input id="adminMonth" class="overtime-month-input" type="month">
+                  <button class="text-button tiny" type="button" id="collectButton">수집</button>
+                  <button class="primary-button small" type="button" id="exportCsvButton" disabled>CSV</button>
+                </div>
+              </div>
+              <div class="overtime-summary-cards" id="adminSummaryCards"></div>
+              <div class="overtime-table-wrap" id="adminSummaryTable"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-label">원본</p>
+                  <h2>수집된 기록</h2>
+                </div>
+                <span class="result-count" id="adminEntryCount">0건</span>
+              </div>
+              <div class="overtime-table-wrap" id="adminEntriesTable"></div>
+            </section>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

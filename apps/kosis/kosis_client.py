@@ -51,7 +51,7 @@ CENTRAL_AGENCIES = [
 KOSIS_OPENAPI_BASE = "https://kosis.kr/openapi"
 LOCAL_TOPIC_VIEW = "MT_GTITLE01"   # e-지방지표(주제별)
 LOCAL_REGION_VIEW = "MT_GTITLE02"  # e-지방지표(지역별)
-ORG_VIEW = "MT_OTITLE01"           # 국내통계 기관별
+ORG_VIEW = "MT_OTITLE"             # 국내통계 기관별
 SEARCH_MAX_WORKERS = 3
 SEARCH_RESULT_COUNT_PER_TERM = 20
 SEARCH_PRECISION_EVALUATION_LIMIT = 24
@@ -75,9 +75,12 @@ ORG_NAME_BY_ID = {
 LOCAL_KEYWORD_ALIASES = {
     "급수": ["상수도", "수도", "보급률"],
     "급수량": ["상수도", "수도", "보급률"],
-    "수도": ["상수도", "하수도", "수도"],
+    "수도": ["상수도", "하수도", "수도", "급수", "급수량", "하수"],
     "인구수": ["인구", "주민등록인구", "인구총조사"],
 }
+
+ENVIRONMENT_AGENCY_IDS = {"106", "392"}
+WATER_AGENCY_IDS = {"101", "106", "110", "392", "460"}
 
 SEARCH_KEYWORD_EXPANSIONS = {
     "장래인구": [
@@ -1071,12 +1074,25 @@ class KosisClient:
                 score -= 30
                 reasons.append("현재인구 감점")
         elif self._is_water_query(keyword):
-            if "상수도보급률" in tbl_name:
+            keyword_text = str(keyword or "").strip()
+            if keyword_text and tbl_name.strip() == keyword_text:
+                score += 10
+                reasons.append("상하수도 정확표명")
+            elif keyword_text and tbl_name.startswith(keyword_text):
+                score += 8
+                reasons.append("상하수도 시작표명")
+            elif "상수도보급률" in tbl_name:
                 score += 35
                 reasons.append("상수도보급률")
             elif "상수도" in tbl_name and ("보급" in tbl_name or "급수" in tbl_name):
                 score += 18
                 reasons.append("급수/보급 지표")
+            elif "상수도" in tbl_name:
+                score += 12
+                reasons.append("상수도 표명")
+            elif any(term in tbl_name for term in ("하수도", "급수", "수돗물")):
+                score += 6
+                reasons.append("상하수도 연관표")
             elif not any(term in tbl_name for term in ("상수도", "하수도", "수도", "급수", "보급")):
                 score -= 35
                 reasons.append("상수도 관련도 낮음")
@@ -1090,6 +1106,53 @@ class KosisClient:
             if "읍면동" in tbl_name or "동읍면" in tbl_name:
                 score += 10
                 reasons.append("읍면동 표명")
+
+        return score
+
+    def _title_match_score(self, tbl_name, keyword):
+        """최종 추천점수용 표명 매칭 점수입니다."""
+        keyword = str(keyword or "").strip()
+        tbl_name = str(tbl_name or "").strip()
+        if not keyword or not tbl_name:
+            return 0, ""
+
+        if tbl_name == keyword:
+            return 30, "표명 완전일치"
+        if tbl_name.startswith(keyword):
+            return 24, "표명 시작매칭"
+        if keyword in tbl_name:
+            return 20, "표명 직접매칭"
+        return 0, ""
+
+    def _apply_org_context_score(self, score, reasons, table_info, region_name, has_region_match):
+        """선택 기관별 검색의 지역/기관 맥락을 최종 추천점수에 반영합니다."""
+        if table_info.get("검색소스") != "기관별통계":
+            return score
+
+        regions = [str(value) for value in (table_info.get("행정구역") or [])]
+        if region_name and region_name in regions:
+            score += 18
+            reasons.append("선택기관 통계")
+            if not has_region_match:
+                region_summary = table_info.get("지역수준요약", "")
+                if "읍면동까지" in region_summary:
+                    score += 12
+                    reasons.append("기관 내 읍면동")
+                elif "시군구까지" in region_summary:
+                    score += 8
+                    reasons.append("기관 내 시군구")
+        else:
+            score += 8
+            reasons.append("기관별통계")
+
+        try:
+            org_score = int(float(table_info.get("기관별점수", 0) or 0))
+        except (TypeError, ValueError):
+            org_score = 0
+        org_bonus = min(15, max(0, org_score // 10))
+        if org_bonus:
+            score += org_bonus
+            reasons.append("기관별 표명매칭")
 
         return score
 
@@ -1167,9 +1230,14 @@ class KosisClient:
             table_info.setdefault("세부분류요약", "미확인")
             table_info.setdefault("최신시점", table_info.get("수록기간종료일", "?"))
 
-        if keyword and keyword in tbl_name:
-            score += 20
-            reasons.append("표명 직접매칭")
+        title_score, title_reason = self._title_match_score(tbl_name, keyword)
+        if title_score:
+            score += title_score
+            reasons.append(title_reason)
+
+        score = self._apply_org_context_score(
+            score, reasons, table_info, region_name, has_region_match
+        )
 
         for expanded in SEARCH_KEYWORD_EXPANSIONS.get(keyword, []):
             if expanded in tbl_name:
@@ -1285,34 +1353,57 @@ class KosisClient:
         return rows
 
     def get_org_tables(self, org_list_id):
-        """특정 기관 하위의 통계표 목록을 가져옵니다 (2단계까지 탐색)."""
+        """특정 기관 하위의 통계표 목록을 재귀로 가져옵니다."""
         cache_key = ("org_tables", org_list_id)
         if cache_key in self._statistics_list_cache:
             return self._statistics_list_cache[cache_key]
 
-        tables = []
-        children = self.get_statistics_list(ORG_VIEW, org_list_id)
-        for child in children:
-            child_id = child.get("LIST_ID", "")
-            if child.get("TBL_ID"):
-                tables.append(child)
-            elif child_id:
-                for grandchild in self.get_statistics_list(ORG_VIEW, child_id):
-                    if grandchild.get("TBL_ID"):
-                        tables.append(grandchild)
+        tables = self._walk_org_tables(org_list_id, [])
 
         self._statistics_list_cache[cache_key] = tables
         return tables
 
-    def find_org_by_name(self, name):
+    def _walk_org_tables(self, parent_list_id, path, depth=0, max_depth=8):
+        """기관별통계 트리에서 모든 하위 통계표를 찾습니다."""
+        if depth > max_depth:
+            return []
+
+        tables = []
+        for child in self.get_statistics_list(ORG_VIEW, parent_list_id):
+            child_id = child.get("LIST_ID", "")
+            child_name = child.get("LIST_NM", "")
+            if child.get("TBL_ID"):
+                table = dict(child)
+                table["__PATH_NMS"] = path
+                tables.append(table)
+            elif child_id:
+                child_path = path + ([child_name] if child_name else [])
+                tables.extend(self._walk_org_tables(child_id, child_path, depth + 1, max_depth))
+        return tables
+
+    def find_org_by_name(self, name, parent_name=None):
         """기관 목록에서 이름으로 기관을 찾습니다."""
-        for org in self.get_org_list():
+        org_list = self.get_org_list()
+        search_roots = org_list
+
+        if parent_name:
+            parent = None
+            for org in org_list:
+                org_name = org.get("LIST_NM", "")
+                if parent_name == org_name or parent_name in org_name or org_name in parent_name:
+                    parent = org
+                    break
+            parent_id = parent.get("LIST_ID", "") if parent else ""
+            if parent_id:
+                search_roots = self.get_statistics_list(ORG_VIEW, parent_id)
+
+        for org in search_roots:
             org_name = org.get("LIST_NM", "")
-            if name in org_name or org_name in name:
+            if name == org_name or name in org_name or org_name in name:
                 return org
         return None
 
-    def search_org_tables(self, org_name, keyword, max_results=30, callback=None):
+    def search_org_tables(self, org_name, keyword, max_results=30, callback=None, parent_name=None):
         """
         기관별통계에서 특정 기관의 통계표를 키워드로 검색합니다.
 
@@ -1321,7 +1412,7 @@ class KosisClient:
         2. 해당 기관의 통계표 목록 가져오기
         3. 키워드로 필터링
         """
-        org = self.find_org_by_name(org_name)
+        org = self.find_org_by_name(org_name, parent_name=parent_name)
         if not org:
             return []
 
@@ -1343,15 +1434,21 @@ class KosisClient:
             if not tbl_id or not org_id:
                 continue
 
+            path_names = table.get("__PATH_NMS", [])
             if keyword:
-                score = self._score_local_indicator_table(tbl_name, keyword, expanded_keywords)
+                title_score = self._score_local_indicator_table(tbl_name, keyword, expanded_keywords)
+                path_score = self._score_local_indicator_table(" ".join(path_names), keyword, expanded_keywords)
+                if self._is_water_query(keyword):
+                    if title_score <= 0 or not self._is_water_related_title(tbl_name):
+                        continue
+                score = title_score + min(path_score, 10)
                 if score <= 0:
                     continue
             else:
                 score = 1
 
             cycle, start_prd, end_prd = self.get_table_period_from_meta(org_id, tbl_id)
-            resolved_org_name = ORG_NAME_BY_ID.get(org_id, table.get("ORG_NM", org_id))
+            resolved_org_name = table.get("ORG_NM") or org.get("LIST_NM", "") or ORG_NAME_BY_ID.get(org_id, org_id)
 
             results.append({
                 "통계표명": tbl_name,
@@ -1363,10 +1460,11 @@ class KosisClient:
                 "수록기간시작일": start_prd,
                 "수록기간종료일": end_prd,
                 "행정구역": [org_name],
-                "매칭경로": ["기관별통계"],
+                "매칭경로": ["기관별통계"] + path_names[-2:],
                 "기관수준": "지역",
                 "검색소스": "기관별통계",
                 "최종갱신일": table.get("SEND_DE", ""),
+                "기관별점수": score,
             })
 
             if callback:
@@ -1376,7 +1474,7 @@ class KosisClient:
             if len(results) >= max_results:
                 break
 
-        results.sort(key=lambda r: r.get("지역지표점수", 0) if "지역지표점수" in r else 0, reverse=True)
+        results.sort(key=lambda r: r.get("기관별점수", 0), reverse=True)
         return results
 
     def search_local_indicators(self, sido, sigungu, keyword, max_results=30, callback=None):
@@ -1605,6 +1703,22 @@ class KosisClient:
     def _table_key(self, org_id, tbl_id):
         return str(org_id), str(tbl_id)
 
+    def _agency_scope_ids(self, search_scope):
+        if search_scope == "environment_agencies":
+            return ENVIRONMENT_AGENCY_IDS
+        if search_scope == "water_agencies":
+            return WATER_AGENCY_IDS
+        return None
+
+    def _row_org_id(self, row):
+        if hasattr(row, "get"):
+            return str(row.get("기관ID", "") or row.get("ORG_ID", ""))
+        return ""
+
+    def _is_water_related_title(self, title):
+        water_title_terms = ("상수도", "하수도", "수도", "수돗물", "급수", "하수")
+        return any(term in str(title or "") for term in water_title_terms)
+
     # ----------------------------------------------------------
     # 기본 검색 + 역방향 보완 (v2 개선)
     # ----------------------------------------------------------
@@ -1616,6 +1730,7 @@ class KosisClient:
         max_results=30,
         callback=None,
         include_subregion_search=False,
+        search_scope="combined",
     ):
         """
         검색 후 결과를 행정구역별로 분류하고 매칭 경로를 분석합니다.
@@ -1626,159 +1741,181 @@ class KosisClient:
         결과를 합쳐서 누락을 줄임.
         """
         region_name = sigungu if (sigungu and sigungu != "전체") else sido
-        search_terms = self.build_search_terms(sido, sigungu, keyword)
-
-        if callback:
-            callback(0, f"확장 검색어 {len(search_terms)}개 준비")
-
-        def search_callback(progress, message):
-            if callback:
-                callback(int(progress * 0.14), message)
-
-        # ── 1단계: 단순 검색어를 내부 확장 검색어로 넓혀 후보 수집 ─────
-        combined_df = self.search_many(
-            search_terms,
-            result_count=min(max_results, SEARCH_RESULT_COUNT_PER_TERM),
-            callback=search_callback,
-        )
-
-        if include_subregion_search and sigungu and sigungu != "전체":
-            subregion_terms = self.build_subregion_search_terms(sido, sigungu, keyword)
-            if subregion_terms:
-                if callback:
-                    callback(15, f"읍면동 {len(subregion_terms)}개 보강검색 준비")
-
-                def subregion_callback(progress, message):
-                    if callback:
-                        callback(15 + int(progress * 0.10), message)
-
-                subregion_df = self.search_many(
-                    subregion_terms,
-                    result_count=min(max_results, SUBREGION_SEARCH_RESULT_COUNT),
-                    callback=subregion_callback,
-                )
-                combined_df = self._merge_results(combined_df, subregion_df)
-
+        valid_scopes = {"combined", "all", "org_only", "environment_agencies", "water_agencies"}
+        search_scope = search_scope if search_scope in valid_scopes else "combined"
+        agency_scope_ids = self._agency_scope_ids(search_scope)
+        include_combined_search = search_scope in {"combined", "all", "environment_agencies", "water_agencies"}
+        include_org_search = search_scope in {"all", "org_only"}
         folders = self._init_result_folders(sido, sigungu)
         seen = set()
         table_infos = []
         total = 0
+        added_local = 0
+        added_org = 0
 
-        if combined_df is not None and len(combined_df) > 0:
-            total = len(combined_df)
-            candidate_rows = []
-            for _, row in combined_df.iterrows():
-                if row.get('기관ID', '') and row.get('통계표ID', ''):
-                    candidate_rows.append(row)
-
-            candidate_rows.sort(
-                key=lambda row: self.quick_candidate_score(
-                    row, keyword, sido=sido, sigungu=sigungu
-                ),
-                reverse=True,
-            )
-            eval_total = min(
-                len(candidate_rows),
-                max_results,
-                SEARCH_PRECISION_EVALUATION_LIMIT,
-            )
+        if include_combined_search:
+            search_terms = self.build_search_terms(sido, sigungu, keyword)
 
             if callback:
-                callback(20, f"후보 {total}건 발견. 상위 {eval_total}건 정밀평가 시작...")
+                callback(0, f"확장 검색어 {len(search_terms)}개 준비")
 
-            # ── 2단계: 간단평가 상위 통계표만 메타 정밀평가 ─────────
-            for i, row in enumerate(candidate_rows[:eval_total]):
-                org_id = row.get('기관ID', '')
-                tbl_id = row.get('통계표ID', '')
-                tbl_name = row.get('통계표명', '')
-                org_name = row.get('기관명', '')
-                tbl_content = row.get('통계표주요내용', '')
-                start_prd = row.get('수록기간시작일', '?')
-                end_prd = row.get('수록기간종료일', '?')
-
-                if not org_id or not tbl_id:
-                    continue
-
-                progress = 20 + int((i + 1) / max(1, eval_total) * 55)  # 20~75%
+            def search_callback(progress, message):
                 if callback:
-                    callback(progress, f"({i+1}/{eval_total}) {tbl_name[:25]}... 정밀평가 중")
+                    callback(int(progress * 0.14), message)
 
-                cat_df = self.get_table_meta_items(org_id, tbl_id)
-                if cat_df is None:
-                    cat_df = self.get_categories(org_id, tbl_id)
-                region_levels = self.classify_region_level(cat_df, sido, sigungu)
-                matched_term = row.get('검색어', f"{region_name} {keyword}")
-                match_types = self.analyze_match_type(matched_term, tbl_name, tbl_content, cat_df)
-                agency_level = self.classify_agency(org_name)
+            # ── 1단계: 단순 검색어를 내부 확장 검색어로 넓혀 후보 수집 ─────
+            combined_df = self.search_many(
+                search_terms,
+                result_count=min(max_results, SEARCH_RESULT_COUNT_PER_TERM),
+                callback=search_callback,
+            )
 
-                table_info = {
-                    '통계표명': tbl_name,
-                    '기관명': org_name,
-                    '기관ID': org_id,
-                    '통계표ID': tbl_id,
-                    '수록기간': f"{start_prd} ~ {end_prd}",
-                    '수록기간시작일': start_prd,
-                    '수록기간종료일': end_prd,
-                    '행정구역': region_levels,
-                    '매칭경로': match_types,
-                    '기관수준': agency_level,
-                    '분류항목_df': cat_df,
-                    '검색소스': 'KOSIS통합검색',
-                    '검색어': matched_term,
-                    '간단평가점수': self.quick_candidate_score(
+            if include_subregion_search and sigungu and sigungu != "전체":
+                subregion_terms = self.build_subregion_search_terms(sido, sigungu, keyword)
+                if subregion_terms:
+                    if callback:
+                        callback(15, f"읍면동 {len(subregion_terms)}개 보강검색 준비")
+
+                    def subregion_callback(progress, message):
+                        if callback:
+                            callback(15 + int(progress * 0.10), message)
+
+                    subregion_df = self.search_many(
+                        subregion_terms,
+                        result_count=min(max_results, SUBREGION_SEARCH_RESULT_COUNT),
+                        callback=subregion_callback,
+                    )
+                    combined_df = self._merge_results(combined_df, subregion_df)
+
+            if combined_df is not None and len(combined_df) > 0:
+                total = len(combined_df)
+                candidate_rows = []
+                for _, row in combined_df.iterrows():
+                    if agency_scope_ids and self._row_org_id(row) not in agency_scope_ids:
+                        continue
+                    if agency_scope_ids and self._is_water_query(keyword) and not self._is_water_related_title(row.get('통계표명', '')):
+                        continue
+                    if row.get('기관ID', '') and row.get('통계표ID', ''):
+                        candidate_rows.append(row)
+
+                total = len(candidate_rows)
+                candidate_rows.sort(
+                    key=lambda row: self.quick_candidate_score(
                         row, keyword, sido=sido, sigungu=sigungu
                     ),
-                }
-                self.enrich_recommendation(table_info, keyword, region_name=region_name)
+                    reverse=True,
+                )
+                eval_total = min(
+                    len(candidate_rows),
+                    max_results,
+                    SEARCH_PRECISION_EVALUATION_LIMIT,
+                )
 
-                table_infos.append(table_info)
-                seen.add(self._table_key(org_id, tbl_id))
-
-        # ── 3단계: e-지방지표 전용 검색으로 보강 ───────────────
-        local_tables = []
-        if self._is_future_population_query(keyword):
-            if callback:
-                callback(78, "[지역지표] 장래인구는 통합검색 후보를 우선 사용")
-        else:
-            if callback:
-                callback(78, f"[지역지표] '{keyword}' 후보 확인 중...")
-
-            def local_callback(progress, message):
                 if callback:
-                    callback(78 + int(progress * 0.20), message)
+                    callback(20, f"후보 {total}건 발견. 상위 {eval_total}건 정밀평가 시작...")
 
-            local_tables = self.search_local_indicators(
-                sido, sigungu, keyword,
-                max_results=min(max_results, 12),
-                callback=local_callback,
-            )
+                # ── 2단계: 간단평가 상위 통계표만 메타 정밀평가 ─────────
+                for i, row in enumerate(candidate_rows[:eval_total]):
+                    org_id = row.get('기관ID', '')
+                    tbl_id = row.get('통계표ID', '')
+                    tbl_name = row.get('통계표명', '')
+                    org_name = row.get('기관명', '')
+                    tbl_content = row.get('통계표주요내용', '')
+                    start_prd = row.get('수록기간시작일', '?')
+                    end_prd = row.get('수록기간종료일', '?')
 
-        added_local = 0
-        for table_info in local_tables:
-            key = self._table_key(table_info.get('기관ID', ''), table_info.get('통계표ID', ''))
-            if key in seen:
-                continue
-            self.enrich_recommendation(table_info, keyword, region_name=region_name)
-            table_infos.append(table_info)
-            seen.add(key)
-            added_local += 1
+                    if not org_id or not tbl_id:
+                        continue
+
+                    progress = 20 + int((i + 1) / max(1, eval_total) * 55)  # 20~75%
+                    if callback:
+                        callback(progress, f"({i+1}/{eval_total}) {tbl_name[:25]}... 정밀평가 중")
+
+                    cat_df = self.get_table_meta_items(org_id, tbl_id)
+                    if cat_df is None:
+                        cat_df = self.get_categories(org_id, tbl_id)
+                    region_levels = self.classify_region_level(cat_df, sido, sigungu)
+                    matched_term = row.get('검색어', f"{region_name} {keyword}")
+                    match_types = self.analyze_match_type(matched_term, tbl_name, tbl_content, cat_df)
+                    agency_level = self.classify_agency(org_name)
+
+                    table_info = {
+                        '통계표명': tbl_name,
+                        '기관명': org_name,
+                        '기관ID': org_id,
+                        '통계표ID': tbl_id,
+                        '수록기간': f"{start_prd} ~ {end_prd}",
+                        '수록기간시작일': start_prd,
+                        '수록기간종료일': end_prd,
+                        '행정구역': region_levels,
+                        '매칭경로': match_types,
+                        '기관수준': agency_level,
+                        '분류항목_df': cat_df,
+                        '검색소스': 'KOSIS통합검색',
+                        '검색어': matched_term,
+                        '간단평가점수': self.quick_candidate_score(
+                            row, keyword, sido=sido, sigungu=sigungu
+                        ),
+                    }
+                    self.enrich_recommendation(table_info, keyword, region_name=region_name)
+
+                    table_infos.append(table_info)
+                    seen.add(self._table_key(org_id, tbl_id))
+
+            # ── 3단계: e-지방지표 전용 검색으로 보강 ───────────────
+            local_tables = []
+            if self._is_future_population_query(keyword):
+                if callback:
+                    callback(78, "[지역지표] 장래인구는 통합검색 후보를 우선 사용")
+            else:
+                if callback:
+                    callback(78, f"[지역지표] '{keyword}' 후보 확인 중...")
+
+                def local_callback(progress, message):
+                    if callback:
+                        callback(78 + int(progress * 0.20), message)
+
+                local_tables = self.search_local_indicators(
+                    sido, sigungu, keyword,
+                    max_results=min(max_results, 12),
+                    callback=local_callback,
+                )
+
+            for table_info in local_tables:
+                if agency_scope_ids and self._row_org_id(table_info) not in agency_scope_ids:
+                    continue
+                if agency_scope_ids and self._is_water_query(keyword) and not self._is_water_related_title(table_info.get('통계표명', '')):
+                    continue
+                key = self._table_key(table_info.get('기관ID', ''), table_info.get('통계표ID', ''))
+                if key in seen:
+                    continue
+                self.enrich_recommendation(table_info, keyword, region_name=region_name)
+                table_infos.append(table_info)
+                seen.add(key)
+                added_local += 1
 
         # ── 4단계: 기관별통계 검색으로 보강 ──────────────────
-        added_org = 0
         org_search_name = sigungu if (sigungu and sigungu != "전체") else sido
-        if org_search_name and org_search_name != "전국":
+        parent_org_name = sido if (sigungu and sigungu != "전체") else None
+        if include_org_search and org_search_name and org_search_name != "전국":
             if callback:
-                callback(92, f"[기관별] '{org_search_name}' 통계표 탐색 중...")
+                start_progress = 2 if search_scope == "org_only" else 92
+                callback(start_progress, f"[기관별] '{org_search_name}' 통계표 탐색 중...")
 
             def org_callback(progress, message):
                 if callback:
-                    callback(92 + int(progress * 0.06), message)
+                    if search_scope == "org_only":
+                        callback(min(98, int(progress * 0.96) + 2), message)
+                    else:
+                        callback(92 + int(progress * 0.06), message)
 
             try:
+                org_max_results = max_results if search_scope == "org_only" else min(max_results, 15)
                 org_tables = self.search_org_tables(
                     org_search_name, keyword,
-                    max_results=min(max_results, 15),
+                    max_results=org_max_results,
                     callback=org_callback,
+                    parent_name=parent_org_name,
                 )
                 for table_info in org_tables:
                     key = self._table_key(table_info.get('기관ID', ''), table_info.get('통계표ID', ''))

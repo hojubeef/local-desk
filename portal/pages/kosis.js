@@ -2,7 +2,7 @@
   const apiBase = location.protocol === "http:" ? "" : "http://127.0.0.1:8765";
   const localServerMessage = "로컬 서버에 연결할 수 없습니다. scripts\\Local Desk 실행.bat로 열어주세요.";
   const launcherPath = "C:\\Users\\fusro\\Desktop\\kosis\\Local Desk 실행.bat";
-  const cacheKeyPrefix = "localDesk.kosis.search.";
+  const cacheKeyPrefix = "localDesk.kosis.search.v2.";
   const cacheIndexKey = "localDesk.kosis.search.index";
   const cacheLimit = 12;
   const fallbackRegions = {
@@ -112,6 +112,7 @@
       sido: body.sido,
       sigungu: body.sigungu,
       keyword: body.keyword,
+      searchScope: body.searchScope || "combined",
       includeSubregionSearch: Boolean(body.includeSubregionSearch),
       reportYear: String(body.reportYear || ""),
       yearWindow: String(body.yearWindow || "5"),
@@ -187,6 +188,7 @@
       setSearchLog([
         `${formatClock(startedAt)} 검색 시작`,
         `${body.sido} ${body.sigungu} / ${body.keyword}`,
+        `검색 범위: ${searchScopeText(body.searchScope)}`,
         `${job.progress || 0}% · ${job.message || "검색 중..."}`
       ]);
 
@@ -1277,9 +1279,133 @@
   }
 
   // ── 엑셀 다운로드 ──
-  function downloadPivotXlsx(includeChartImage) {
+  function previewRequestBody(extra = {}) {
+    const period = previewPeriodBody();
+    return {
+      orgId: currentTable.orgId,
+      tableId: currentTable.tableId,
+      regionName: currentRegionName(),
+      itemIds: conditionState.itemIds,
+      objectSelections: conditionState.objects,
+      latestCount: period.latestCount,
+      startPeriod: period.startPeriod,
+      endPeriod: period.endPeriod,
+      ...extra
+    };
+  }
+
+  async function payloadForXlsx() {
+    const rowCount = Number(lastPreviewPayload?.rowCount || 0);
+    const displayedRows = Number(lastPreviewPayload?.displayedRows || lastPreviewPayload?.rows?.length || 0);
+    if (!lastPreviewPayload || displayedRows >= rowCount) {
+      return lastPreviewPayload;
+    }
+
+    $("#previewStatus").textContent = `엑셀용 전체 데이터 조회 중... (${displayedRows}/${rowCount}행 미리보기됨)`;
+    const payload = await request("/api/kosis/preview", {
+      method: "POST",
+      body: JSON.stringify(previewRequestBody({ includeAllRows: true }))
+    });
+    if (payload.apiUsage) updateApiUsage(payload.apiUsage);
+    $("#previewStatus").textContent = `엑셀용 전체 데이터 준비 완료: ${payload.rowCount}행`;
+    return payload;
+  }
+
+  function selectedItemNames() {
+    if (!currentDataOptions) return "";
+    const selected = conditionState.itemIds || [];
+    if (selected.includes("ALL")) return "전체";
+    const itemById = new Map((currentDataOptions.items || []).map((item) => [String(item.id || ""), item]));
+    return selected
+      .map((id) => itemById.get(String(id))?.name || id)
+      .join(", ");
+  }
+
+  function selectedObjectRows() {
+    if (!currentDataOptions) return [];
+    return (currentDataOptions.objects || []).map((group) => {
+      const selected = conditionState.objects[group.obj_id] || ["ALL"];
+      let names = "전체";
+      if (!selected.includes("ALL")) {
+        const valueById = new Map((group.values || []).map((value) => [String(value.id || ""), value]));
+        names = selected
+          .map((id) => valueById.get(String(id))?.name || id)
+          .join(", ");
+      }
+      return [
+        group.obj_name || group.obj_id,
+        names,
+        selected.includes("ALL") ? "ALL" : selected.join("+")
+      ];
+    });
+  }
+
+  function addMetadataSheet(wb, payload, sheetData) {
+    const period = previewPeriodBody();
+    const generatedAt = new Intl.DateTimeFormat("ko-KR", {
+      dateStyle: "medium",
+      timeStyle: "medium"
+    }).format(new Date());
+    const unit = [...new Set((payload.rows || []).map((row) => row.UNIT_NM).filter(Boolean))].join(", ");
+    const metaRows = [
+      ["KOSIS 통계자료 메타정보"],
+      [],
+      ["통계표명", currentTable?.title || ""],
+      ["기관명", currentTable?.agency || ""],
+      ["기관ID", currentTable?.orgId || ""],
+      ["통계표ID", currentTable?.tableId || ""],
+      ["자료출처", currentTable?.source || ""],
+      ["수록기간", currentTable?.period || ""],
+      ["최신시점", currentTable?.latest || ""],
+      ["단위", unit || ""],
+      [],
+      ["조회 조건"],
+      ["지역", currentRegionName()],
+      ["시작기간", period.startPeriod || ""],
+      ["종료기간", period.endPeriod || ""],
+      ["최근 N개", period.latestCount || ""],
+      ["선택 항목", selectedItemNames()],
+      [],
+      ["선택 분류", "선택값", "선택코드"],
+      ...selectedObjectRows(),
+      [],
+      ["엑셀 구성"],
+      ["원자료 행 수", String(payload.rowCount || payload.rows?.length || 0)],
+      ["엑셀 데이터 행 수", String(Math.max(0, sheetData.length - 1))],
+      ["행 필드", pivotConfig.rows.map(fieldLabel).join(", ")],
+      ["열 필드", pivotConfig.cols.map(fieldLabel).join(", ")],
+      ["값 필드", pivotConfig.values.map(fieldLabel).join(", ")],
+      ["생성시각", generatedAt],
+      ["생성도구", "Local Desk KOSIS"]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(metaRows);
+    ws["!cols"] = [{ wch: 18 }, { wch: 72 }, { wch: 24 }];
+    XLSX.utils.book_append_sheet(wb, ws, "메타정보");
+  }
+
+  async function downloadPivotXlsx(includeChartImage) {
     if (!lastPreviewPayload || !lastPreviewPayload.rows.length) return;
-    const data = lastPreviewPayload.rows;
+    const button = $("#downloadXlsxBtn");
+    const originalText = button?.textContent || "Excel 다운로드";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "전체 행 준비 중...";
+    }
+
+    let xlsxPayload;
+    try {
+      xlsxPayload = await payloadForXlsx();
+    } catch (error) {
+      $("#previewStatus").textContent = error.message;
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+      return;
+    }
+
+    const data = xlsxPayload.rows;
     const rowFields = pivotConfig.rows;
     const colFields = pivotConfig.cols;
     const valField = pivotConfig.values[0] || "DT";
@@ -1349,6 +1475,7 @@
     ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(wb, ws, "데이터");
+    addMetadataSheet(wb, xlsxPayload, sheetData);
 
     // 차트 이미지 삽입 (비동기)
     if (includeChartImage && typeof Plotly !== "undefined" && $("#chartArea")?.data?.length) {
@@ -1356,9 +1483,17 @@
         // 이미지 시트 추가는 SheetJS 무료 버전에서 직접 지원하지 않으므로,
         // 별도 시트에 URL 참조를 남기거나, 데이터만 저장
         XLSX.writeFile(wb, generateXlsxFilename());
+        if (button) {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
       });
     } else {
       XLSX.writeFile(wb, generateXlsxFilename());
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
     }
   }
 
@@ -1473,7 +1608,6 @@
   async function previewSelectedData() {
     if (!currentTable || !currentDataOptions) return;
     const button = $("#previewDataButton");
-    const period = previewPeriodBody();
     button.disabled = true;
     $("#previewStatus").textContent = "자료 조회 중...";
     $("#previewPane").innerHTML = '<div class="empty">자료 조회 중...</div>';
@@ -1483,16 +1617,7 @@
     try {
       const payload = await request("/api/kosis/preview", {
         method: "POST",
-        body: JSON.stringify({
-          orgId: currentTable.orgId,
-          tableId: currentTable.tableId,
-          regionName: currentRegionName(),
-          itemIds: conditionState.itemIds,
-          objectSelections: conditionState.objects,
-          latestCount: period.latestCount,
-          startPeriod: period.startPeriod,
-          endPeriod: period.endPeriod
-        })
+        body: JSON.stringify(previewRequestBody())
       });
       $("#previewStatus").textContent = `조회 완료: ${payload.rowCount}행`;
       renderPreviewTable(payload);
@@ -1521,6 +1646,46 @@
     return `기준년도 ${body.reportYear} · ${windowYears}년 이내 · ${latest}`;
   }
 
+  function searchScopeText(value) {
+    if (value === "org_only") return "선택지역 기관별만";
+    if (value === "environment_agencies") return "환경부·환경공단";
+    if (value === "water_agencies") return "상하수도 주요기관";
+    if (value === "all") return "전체+선택지역 기관별";
+    return "KOSIS 전체+지역지표";
+  }
+
+  function searchScopeHelpText(value) {
+    if (value === "org_only") {
+      return "선택한 시/군/구 기관별 통계만 검색합니다. 예: 경상북도 > 상주시.";
+    }
+    if (value === "environment_agencies") {
+      return "기후에너지환경부와 한국환경공단 통계표만 검색합니다.";
+    }
+    if (value === "water_agencies") {
+      return "국가데이터처, 행정안전부, 기후에너지환경부, 한국환경공단, 한국국토정보공사만 검색합니다.";
+    }
+    if (value === "all") {
+      return "KOSIS 통합검색, e-지방지표, 선택지역 기관별 통계를 함께 검색합니다.";
+    }
+    return "KOSIS 통합검색과 e-지방지표에서 검색합니다.";
+  }
+
+  function updateSearchScopeHelp() {
+    const node = $("#searchScopeHelp");
+    if (!node) return;
+    node.textContent = searchScopeHelpText($("#searchScopeSelect").value);
+  }
+
+  function initialSearchMessage(body) {
+    if (body.searchScope === "org_only") {
+      return "선택 기관의 기관별통계 트리를 확인하는 중...";
+    }
+    if (body.searchScope === "environment_agencies" || body.searchScope === "water_agencies") {
+      return "지정 기관의 통계표 후보만 확인하는 중...";
+    }
+    return "통합검색과 지역지표 후보를 확인하는 중...";
+  }
+
   function updateCustomYearWindowState() {
     const customSelected = document.querySelector('input[name="yearWindow"]:checked')?.value === "custom";
     $("#customYearWindowInput").disabled = !customSelected;
@@ -1532,6 +1697,7 @@
       sido: $("#sidoSelect").value,
       sigungu: $("#sigunguSelect").value,
       keyword: $("#keywordInput").value.trim(),
+      searchScope: $("#searchScopeSelect").value,
       includeSubregionSearch: $("#subregionSearch").checked,
       reportYear: $("#reportYearInput").value.trim(),
       yearWindow: selectedYearWindow,
@@ -1559,6 +1725,7 @@
         setSearchLog([
           `${cachedAtText(cached.savedAt)} 저장된 결과`,
           `${body.sido} ${body.sigungu} / ${body.keyword}`,
+          `검색 범위: ${searchScopeText(body.searchScope)}`,
           "필요하면 아래 '다시 새롭게 검색'으로 KOSIS API를 다시 호출하세요."
         ]);
         return;
@@ -1577,8 +1744,9 @@
     setSearchLog([
       `${formatClock(startedAt)} 검색 시작`,
       `${body.sido} ${body.sigungu} / ${body.keyword}`,
+      `검색 범위: ${searchScopeText(body.searchScope)}`,
       yearCriteriaText(body),
-      "통합검색과 지역지표 후보를 확인하는 중..."
+      initialSearchMessage(body)
     ]);
     $("#folderList").innerHTML = '<div class="empty">검색 중...</div>';
 
@@ -1675,6 +1843,7 @@
     $("#sidoSelect").addEventListener("change", renderSigunguOptions);
     $("#kosisSearchForm").addEventListener("submit", search);
     $("#freshSearchButton").addEventListener("click", () => search(null, { forceRefresh: true }));
+    $("#searchScopeSelect").addEventListener("change", updateSearchScopeHelp);
     document.querySelectorAll('input[name="yearWindow"]').forEach((input) => {
       input.addEventListener("change", updateCustomYearWindowState);
     });
@@ -1737,6 +1906,7 @@
   async function init() {
     bindEvents();
     updateCustomYearWindowState();
+    updateSearchScopeHelp();
     await loadRegions();
   }
 

@@ -43,6 +43,16 @@
         "id": "app-later",
         "name": "나중에 정리",
         "parentId": ""
+      },
+      {
+        "id": "apps-cat-4c1b3abb-6617-4899-a037-ecc065292655",
+        "name": "리습",
+        "parentId": ""
+      },
+      {
+        "id": "apps-cat-c5238d18-2906-42a1-8453-5f0e775cf004",
+        "name": "qgis",
+        "parentId": ""
       }
     ],
     "todos": [
@@ -129,6 +139,40 @@
       "tags": [
         "KOSIS",
         "통계"
+      ],
+      "status": "active",
+      "favorite": true,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    },
+    "report-data": {
+      "categoryId": "app-stats",
+      "tags": [
+        "보고서",
+        "KOSIS",
+        "상하수도"
+      ],
+      "status": "active",
+      "favorite": true,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    },
+    "overtime-journal": {
+      "categoryId": "app-tools",
+      "tags": [
+        "야근",
+        "집계",
+        "웹하드"
       ],
       "status": "active",
       "favorite": true,

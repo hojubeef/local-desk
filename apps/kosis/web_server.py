@@ -34,21 +34,45 @@ except ImportError:  # pragma: no cover - old Python fallback
 
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parents[1]
+REPORT_DATA_DIR = ROOT_DIR / "apps" / "report_data"
+OVERTIME_DIR = ROOT_DIR / "apps" / "overtime_journal"
 
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
+if str(REPORT_DATA_DIR) not in sys.path:
+    sys.path.insert(0, str(REPORT_DATA_DIR))
+if str(OVERTIME_DIR) not in sys.path:
+    sys.path.insert(0, str(OVERTIME_DIR))
 
 from config import KOSIS_API_KEY  # noqa: E402
 from kosis_client import KosisClient  # noqa: E402
+from report_data_service import (  # noqa: E402
+    ReportDataError,
+    catalog_summary,
+    load_catalog,
+    recommend_item,
+)
+from service import (  # noqa: E402
+    OvertimeError,
+    collect_entries as overtime_collect_entries,
+    delete_entry as overtime_delete_entry,
+    journal_dir as overtime_journal_dir,
+    list_entries as overtime_list_entries,
+    parse_entries as overtime_parse_entries,
+    save_entries as overtime_save_entries,
+    save_settings as overtime_save_settings,
+    settings_payload as overtime_settings_payload,
+)
 
 
 CLIENT = KosisClient(KOSIS_API_KEY)
 JOBS = {}
 JOB_LOCK = threading.Lock()
 JOB_TTL_SECONDS = 600
-ASSET_VERSION = "20260502-git-panel"
+ASSET_VERSION = "20260507-overtime"
 PORTAL_DATA_PATH = ROOT_DIR / "portal" / "data" / "portal-data.json"
 LOCAL_DIR = ROOT_DIR / "local"
+OVERTIME_SETTINGS_PATH = LOCAL_DIR / "overtime-journal" / "settings.json"
 GOOGLE_CREDENTIALS_PATH = LOCAL_DIR / "secrets" / "google-calendar-credentials.json"
 GOOGLE_TOKEN_PATH = LOCAL_DIR / "secrets" / "google-calendar-token.json"
 GOOGLE_CALENDAR_ALL = "__all__"
@@ -218,8 +242,9 @@ def dataframe_payload(df, max_rows=300):
         }
 
     columns = [safe_text(col) for col in df.columns.tolist()]
+    export_df = df if max_rows is None else df.head(max_rows)
     rows = []
-    for _, row in df.head(max_rows).iterrows():
+    for _, row in export_df.iterrows():
         rows.append({
             col: safe_text(row.get(col))
             for col in columns
@@ -306,6 +331,9 @@ def validate_search_body(body):
     sigungu = safe_text(body.get("sigungu"), "전체")
     keyword = safe_text(body.get("keyword")).strip()
     include_subregion = bool(body.get("includeSubregionSearch", True))
+    search_scope = safe_text(body.get("searchScope"), "combined")
+    if search_scope not in {"combined", "all", "org_only", "environment_agencies", "water_agencies"}:
+        search_scope = "combined"
     report_year = parse_optional_int(body.get("reportYear"))
     year_window_raw = safe_text(body.get("yearWindow"), "5")
     custom_year_window = parse_optional_int(body.get("customYearWindow"))
@@ -325,10 +353,28 @@ def validate_search_body(body):
         "sigungu": sigungu,
         "keyword": keyword,
         "include_subregion": include_subregion,
+        "search_scope": search_scope,
         "report_year": report_year,
         "year_window": max(1, min(100, year_window)),
         "include_latest_data": include_latest_data,
     }
+
+
+def report_candidate_to_payload(candidate, criteria=None):
+    payload = table_to_payload(candidate, criteria)
+    payload.update({
+        "itemId": safe_text(candidate.get("보고서항목ID")),
+        "itemName": safe_text(candidate.get("보고서항목명")),
+        "sourceId": safe_text(candidate.get("추천자료출처")),
+        "sourceLabel": safe_text(candidate.get("추천자료출처명")),
+        "sourceDescription": safe_text(candidate.get("추천자료출처설명")),
+        "sourceRank": candidate.get("추천자료출처순위", 99),
+        "reportScore": candidate.get("보고서추천점수", 0),
+        "reportGrade": safe_text(candidate.get("보고서추천도"), "검토"),
+        "reportReason": safe_text(candidate.get("보고서추천사유")),
+        "matchedKeyword": safe_text(candidate.get("매칭검색어")),
+    })
+    return payload
 
 
 def run_search(params, callback=None):
@@ -338,6 +384,7 @@ def run_search(params, callback=None):
         sigungu=params["sigungu"],
         keyword=params["keyword"],
         include_subregion_search=params["include_subregion"],
+        search_scope=params["search_scope"],
         callback=callback,
     )
     payload_folders = folders_to_payload(folders, params)
@@ -347,9 +394,11 @@ def run_search(params, callback=None):
         "sido": params["sido"],
         "sigungu": params["sigungu"],
         "keyword": params["keyword"],
+        "searchScope": params["search_scope"],
         "total": total,
         "folders": payload_folders,
         "criteria": {
+            "searchScope": params.get("search_scope"),
             "reportYear": params.get("report_year"),
             "yearWindow": params.get("year_window"),
             "includeLatestData": params.get("include_latest_data"),
@@ -886,12 +935,18 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
         if path == "/api/kosis/regions":
             self.write_json({"regions": REGION_DATA})
             return
+        if path == "/api/report-data/catalog":
+            self.handle_report_data_catalog()
+            return
         if path == "/api/kosis/search/status":
             query = parse_qs(parsed.query)
             self.handle_search_status(query.get("id", [""])[0])
             return
         if path == "/api/portal/data":
             self.handle_portal_data_get()
+            return
+        if path == "/api/overtime/settings":
+            self.handle_overtime_settings_get()
             return
         if path == "/api/git/status":
             self.handle_git_status()
@@ -934,6 +989,30 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
             return
         if path == "/api/kosis/preview":
             self.handle_preview()
+            return
+        if path == "/api/report-data/recommend":
+            self.handle_report_data_recommend()
+            return
+        if path == "/api/overtime/settings":
+            self.handle_overtime_settings_post()
+            return
+        if path == "/api/overtime/select-folder":
+            self.handle_overtime_select_folder()
+            return
+        if path == "/api/overtime/parse":
+            self.handle_overtime_parse()
+            return
+        if path == "/api/overtime/save":
+            self.handle_overtime_save()
+            return
+        if path == "/api/overtime/list":
+            self.handle_overtime_list()
+            return
+        if path == "/api/overtime/delete":
+            self.handle_overtime_delete()
+            return
+        if path == "/api/overtime/collect":
+            self.handle_overtime_collect()
             return
         self.write_json({"error": "Unknown API endpoint"}, status=404)
 
@@ -1003,6 +1082,8 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
         start_period = safe_text(body.get("startPeriod"))
         end_period = safe_text(body.get("endPeriod"))
         obj_selections = body.get("objectSelections") or {}
+        include_all_rows = bool(body.get("includeAllRows"))
+        max_rows = None if include_all_rows else 300
 
         if not org_id or not table_id:
             self.write_json({"error": "기관ID와 통계표ID가 필요합니다."}, status=400)
@@ -1019,7 +1100,7 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
                 end_period=end_period or None,
                 obj_selections=obj_selections,
             )
-            payload = dataframe_payload(df)
+            payload = dataframe_payload(df, max_rows=max_rows)
             payload.update({
                 "ok": True,
                 "orgId": org_id,
@@ -1027,6 +1108,137 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
                 "apiUsage": CLIENT.get_api_usage_snapshot(),
             })
             self.write_json(payload)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_report_data_catalog(self):
+        try:
+            self.write_json({
+                "ok": True,
+                "catalog": catalog_summary(load_catalog()),
+                "regions": REGION_DATA,
+            })
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_report_data_recommend(self):
+        body = self.read_json_body()
+        try:
+            CLIENT.begin_api_usage_session()
+            result = recommend_item(CLIENT, load_catalog(), body)
+            criteria = result.get("criteria", {})
+            result["candidates"] = [
+                report_candidate_to_payload(candidate, criteria)
+                for candidate in result.get("candidates", [])
+            ]
+            result["apiUsage"] = CLIENT.get_api_usage_snapshot()
+            self.write_json(result)
+        except ReportDataError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_settings_get(self):
+        try:
+            self.write_json({
+                "ok": True,
+                "settings": overtime_settings_payload(OVERTIME_SETTINGS_PATH),
+            })
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_settings_post(self):
+        body = self.read_json_body()
+        try:
+            settings = overtime_save_settings(OVERTIME_SETTINGS_PATH, body)
+            self.write_json({"ok": True, "settings": settings})
+        except OvertimeError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_select_folder(self):
+        body = self.read_json_body()
+        initial_dir = safe_text(body.get("initialDir")).strip()
+        title = safe_text(body.get("title"), "폴더 선택")
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            options = {"title": title}
+            if initial_dir and Path(initial_dir).exists():
+                options["initialdir"] = initial_dir
+            selected = filedialog.askdirectory(**options)
+            root.destroy()
+            if not selected:
+                self.write_json({"ok": True, "cancelled": True, "folder": ""})
+                return
+            self.write_json({"ok": True, "cancelled": False, "folder": selected})
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_parse(self):
+        body = self.read_json_body()
+        try:
+            self.write_json(overtime_parse_entries(
+                safe_text(body.get("text")),
+                safe_text(body.get("employeeName")),
+            ))
+        except OvertimeError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_save(self):
+        body = self.read_json_body()
+        try:
+            self.write_json(overtime_save_entries(
+                body.get("baseFolder") or body.get("folder"),
+                body.get("entries") or [],
+                safe_text(body.get("employeeName")),
+            ))
+        except OvertimeError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_list(self):
+        body = self.read_json_body()
+        try:
+            base_folder = body.get("baseFolder") or body.get("folder")
+            entries = overtime_list_entries(base_folder)
+            self.write_json({
+                "ok": True,
+                "journalDir": str(overtime_journal_dir(base_folder)),
+                "entries": entries,
+                "count": len(entries),
+            })
+        except OvertimeError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_delete(self):
+        body = self.read_json_body()
+        try:
+            self.write_json(overtime_delete_entry(
+                body.get("baseFolder") or body.get("folder"),
+                body.get("id"),
+            ))
+        except OvertimeError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_overtime_collect(self):
+        body = self.read_json_body()
+        try:
+            self.write_json(overtime_collect_entries(body.get("root") or body.get("adminRoot")))
+        except OvertimeError as error:
+            self.write_json({"error": str(error)}, status=400)
         except Exception as error:
             self.write_json({"error": str(error)}, status=500)
 

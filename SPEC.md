@@ -172,5 +172,6 @@ clone 후 아래 항목을 수동으로 설정해야 함:
 | 모듈 | 위치 | 설명 |
 |------|------|------|
 | KOSIS 통계 | `apps/kosis/` + `portal/pages/kosis.*` | KOSIS 공공 통계 조회, 피벗 테이블, 차트, 엑셀 내보내기 |
+| 보고서 기초자료 | `apps/report_data/` + `portal/pages/report_data.*` | 상하수도 보고서 기초자료 항목별 KOSIS 후보 추천, 미리보기, 선택 요약 |
 
 새 모듈을 추가하면 이 표도 갱신할 것.

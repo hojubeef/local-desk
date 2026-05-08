@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>야근일지 사용설명서</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #5b6475;
+      --line: #d9dee8;
+      --soft: #f5f7fb;
+      --blue: #2563eb;
+      --green: #15803d;
+      --amber: #b45309;
+      --red: #b91c1c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #e9edf5;
+      color: var(--ink);
+      font-family: "Malgun Gothic", "Segoe UI", Arial, sans-serif;
+      line-height: 1.62;
+      word-break: keep-all;
+    }
+
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 28px auto;
+      padding: 42px;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.14);
+    }
+
+    h1,
+    h2,
+    h3,
+    p,
+    ul,
+    ol {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+      font-size: 34px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 17px;
+    }
+
+    p,
+    li,
+    td,
+    th {
+      font-size: 14px;
+    }
+
+    ul,
+    ol {
+      padding-left: 22px;
+    }
+
+    li + li {
+      margin-top: 5px;
+    }
+
+    code,
+    pre {
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef2ff;
+      color: #1e40af;
+      font-size: 13px;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0f172a;
+      color: #e5e7eb;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      color: #263249;
+      font-weight: 800;
+    }
+
+    .cover {
+      padding: 28px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #eff6ff, #f8fafc);
+      border: 1px solid #c7d2fe;
+    }
+
+    .subtitle {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .note,
+    .warn,
+    .tip {
+      margin: 14px 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid;
+    }
+
+    .note {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+    }
+
+    .tip {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .warn {
+      border-color: #fed7aa;
+      background: #fff7ed;
+    }
+
+    .note strong,
+    .tip strong,
+    .warn strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .steps {
+      counter-reset: step;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .steps li {
+      position: relative;
+      min-height: 36px;
+      margin: 0 0 10px;
+      padding-left: 44px;
+    }
+
+    .steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      text-align: center;
+      line-height: 30px;
+      font-weight: 800;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .good {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .bad {
+      color: var(--red);
+      font-weight: 800;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 18px;
+      padding: 16px 18px;
+      border-radius: 12px;
+      background: var(--soft);
+    }
+
+    .toc a {
+      color: #1d4ed8;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      main {
+        width: auto;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+
+      h2 {
+        break-after: avoid;
+      }
+
+      table,
+      pre,
+      .card,
+      .note,
+      .tip,
+      .warn {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="cover">
+      <h1>야근일지 사용설명서</h1>
+      <p class="subtitle">각 직원이 자기 PC에서 야근일지를 입력하고, 공유 드라이브 데이터 루트에서 관리자 집계를 확인하는 단독 프로그램입니다.</p>
+      <div class="meta">
+        <span class="pill">배포 파일: 야근일지_수정본8.exe</span>
+        <span class="pill">작성일: 2026-05-08</span>
+        <span class="pill">대상: 직원 입력 / 관리자 집계</span>
+      </div>
+    </section>
+
+    <h2 id="summary">1. 프로그램 개요</h2>
+    <p>이 프로그램은 기존 채팅창에 적던 야근일지 형식을 그대로 사용합니다. 직원은 날짜, 시간, 업무내용을 적어 저장하고, 관리자는 데이터 루트 폴더 안의 직원별 기록을 수집해서 월별 합계, 달력, 결재 상태, 누락 여부를 확인합니다.</p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>직원이 하는 일</h3>
+        <ul>
+          <li>자기 이름과 데이터 루트 폴더를 설정합니다.</li>
+          <li>빠른 입력에서 야근일지를 붙여넣고 저장합니다.</li>
+          <li>내 현황에서 월별 합계, 달력, 수정/삭제를 확인합니다.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>관리자가 하는 일</h3>
+        <ul>
+          <li>수집할 직원과 직급을 설정합니다.</li>
+          <li>전체 집계에서 기록을 수집하고 정렬된 목록을 확인합니다.</li>
+          <li>결재 올림, 결재 완료 비교, 백업/복원을 처리합니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 id="structure">2. 권장 폴더 구조</h2>
+    <p>데이터는 한 루트 폴더 아래에 직원 이름별로 모으는 방식이 가장 관리하기 쉽습니다.</p>
+    <pre>데이터루트
+├─ 이호중
+│  └─ 야근일지
+├─ 박원준
+│  └─ 야근일지
+└─ 노용주
+   └─ 야근일지</pre>
+    <p>직원이 저장하면 각 직원 폴더 안에 <code>야근일지\entries</code>가 만들어지고, 수정/삭제 이력과 백업 파일도 그 아래에 남습니다.</p>
+
+    <div class="note">
+      <strong>배포할 때</strong>
+      직원 PC에는 보통 <code>야근일지_수정본8.exe</code>만 전달하면 됩니다. Python이나 PyInstaller를 각 직원이 따로 설치할 필요는 없습니다.
+    </div>
+
+    <h2 id="first-setting">3. 처음 설정</h2>
+    <ol class="steps">
+      <li><code>야근일지_수정본8.exe</code>를 실행합니다. 브라우저가 열리면 프로그램 화면이 표시됩니다.</li>
+      <li><strong>설정</strong> 탭으로 이동합니다.</li>
+      <li><strong>이름</strong>에 본인 이름을 입력합니다. 데이터 루트 안의 폴더명과 같게 입력하는 것이 좋습니다.</li>
+      <li><strong>데이터 루트 폴더</strong>에서 공유 드라이브의 최상위 폴더를 선택합니다.</li>
+      <li><strong>수집 직원 선택</strong>에서 집계할 직원을 체크하고, 필요한 경우 직급을 지정합니다.</li>
+      <li>컴퓨터를 켤 때 자동 실행하려면 <strong>컴퓨터 켤 때 자동 실행</strong>을 체크합니다.</li>
+      <li><strong>설정 저장</strong>을 누릅니다.</li>
+    </ol>
+
+    <table>
+      <thead>
+        <tr>
+          <th>설정 항목</th>
+          <th>설명</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>이름</td>
+          <td>내 기록을 저장할 직원명입니다. 예: <code>이호중</code></td>
+        </tr>
+        <tr>
+          <td>데이터 루트 폴더</td>
+          <td>직원별 폴더가 들어있는 최상위 공유 폴더입니다.</td>
+        </tr>
+        <tr>
+          <td>수집 직원 선택</td>
+          <td>관리자가 전체 집계에서 가져올 직원만 체크합니다. 이 부분은 접기/펼치기가 가능합니다.</td>
+        </tr>
+        <tr>
+          <td>직급</td>
+          <td><code>전무, 상무, 이사, 차장, 과장, 대리, 사원</code> 순서로 정렬에 사용됩니다.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="input">4. 빠른 입력</h2>
+    <p>기존 채팅 입력 방식 그대로 붙여넣으면 됩니다. 한 건은 날짜/시간 줄과 업무내용 줄로 구성됩니다.</p>
+    <pre>2026.05.06(수) 18:00~20:00
+2026년도 하수도 맨홀추락방지시설 설치공사(3차) 도면 작업</pre>
+
+    <ol class="steps">
+      <li><strong>빠른 입력</strong> 탭에서 내용을 붙여넣습니다.</li>
+      <li>필요하면 왼쪽 달력에서 날짜를 눌러 기본 시간 문장을 넣습니다.</li>
+      <li><strong>미리보기</strong>를 눌러 날짜, 시간, 업무내용이 맞게 인식됐는지 확인합니다.</li>
+      <li>이상이 없으면 <strong>저장</strong>을 누릅니다.</li>
+    </ol>
+
+    <div class="tip">
+      <strong>편한 입력 방법</strong>
+      과업명과 최근 업무내용 버튼을 누르면 자주 쓴 문장을 바로 넣을 수 있습니다. 출퇴근 기록 폴더를 설정해두면 늦은 퇴근 시간도 빠른 입력에서 참고할 수 있습니다.
+    </div>
+
+    <h2 id="attendance">5. 출퇴근 기록 확인</h2>
+    <p>출퇴근 기록 폴더를 등록하면, 퇴근 기록은 있는데 야근일지가 없는 날짜를 <strong>확인 필요</strong>로 표시합니다.</p>
+    <ul>
+      <li>출퇴근 기록은 <code>Export_YYYYMMDD.txt</code> 같은 파일을 읽습니다.</li>
+      <li><code>1</code>은 출근, <code>2</code>는 퇴근으로 처리합니다.</li>
+      <li>출근을 여러 번 찍으면 가장 빠른 시간, 퇴근을 여러 번 찍으면 가장 늦은 시간을 사용합니다.</li>
+      <li>퇴근 시간이 확인 기준 이후인데 야근일지가 없으면 달력과 집계 화면에 표시됩니다.</li>
+    </ul>
+
+    <table>
+      <thead>
+        <tr>
+          <th>옵션</th>
+          <th>기본값 / 의미</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>확인 기준</td>
+          <td>기본 <code>18:30</code>. 이 시간 이후 퇴근이면 확인 대상으로 봅니다.</td>
+        </tr>
+        <tr>
+          <td>야근 시작</td>
+          <td>기본 <code>18:00</code>. 자동 초안의 시작 시간으로 사용합니다.</td>
+        </tr>
+        <tr>
+          <td>이번 달 전 확인 필요 숨김</td>
+          <td>지난달 이전 알림을 숨겨 화면을 깔끔하게 봅니다.</td>
+        </tr>
+        <tr>
+          <td>출근/퇴근 기록 없음 무시</td>
+          <td>출근만 찍거나 퇴근만 찍은 자료를 어떻게 볼지 정합니다.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="mine">6. 내 현황</h2>
+    <p><strong>내 현황</strong> 탭에서는 내 월별 합계, 주간 합계, 달력, 기록 목록을 확인합니다. 달력에서 날짜를 누르면 해당 날짜의 기록을 바로 볼 수 있고, 기록 옆의 <strong>수정</strong> 또는 <strong>삭제</strong>로 정리할 수 있습니다.</p>
+    <ul>
+      <li>하루 3시간, 주 12시간, 월 20시간 기준을 넘으면 알림이 표시됩니다.</li>
+      <li>야간시급을 입력하면 참고용 수당 계산을 볼 수 있습니다.</li>
+      <li>수정하면 수정 이력이 남아 관리자 화면에서도 확인할 수 있습니다.</li>
+    </ul>
+
+    <h2 id="proxy">7. 대리 입력 모드</h2>
+    <p>한 사람이 여러 직원의 야근일지를 대신 입력해야 할 때 사용합니다.</p>
+    <ol class="steps">
+      <li>빠른 입력에서 <strong>대리 입력 모드</strong>를 켭니다.</li>
+      <li><strong>직원 퇴근 확인</strong>을 누르면 수집 직원 기준으로 출퇴근 기록을 확인합니다.</li>
+      <li>확인 필요 항목의 <strong>초안 넣기</strong>를 누르면 직원 이름이 포함된 입력 초안이 들어갑니다.</li>
+      <li>업무내용을 확인한 뒤 미리보기와 저장을 진행합니다.</li>
+    </ol>
+    <pre>이호중
+2026.05.06(수) 18:00~20:00
+2026년도 하수도 맨홀추락방지시설 설치공사(3차) 도면 작업</pre>
+
+    <div class="warn">
+      <strong>대리 수정/삭제</strong>
+      대리 입력 모드에서 다른 직원 기록도 수정/삭제할 수 있습니다. 삭제한 기록은 바로 완전 삭제되지 않고 관리자 화면의 휴지통에 남습니다.
+    </div>
+
+    <h2 id="employees">8. 직원별 현황</h2>
+    <p><strong>직원별 현황</strong> 탭에서는 수집된 직원 중 한 명을 선택해 내 현황과 비슷한 형태로 볼 수 있습니다. 직원별 월 합계, 주간 합계, 달력, 제한시간 알림, 기록 목록을 확인할 수 있고 필요하면 수정/삭제도 가능합니다.</p>
+
+    <h2 id="admin">9. 전체 집계</h2>
+    <p><strong>전체 집계</strong>는 관리자가 가장 자주 보는 화면입니다. <strong>수집</strong>을 누르면 설정에서 체크한 직원의 기록만 가져옵니다.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>기능</th>
+          <th>사용 방법</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>수집</td>
+          <td>체크된 직원 폴더에서 야근일지를 가져옵니다.</td>
+        </tr>
+        <tr>
+          <td>정렬</td>
+          <td>날짜가 먼저이고, 같은 날짜 안에서는 직급, 이름, 시작시간 순으로 정렬됩니다.</td>
+        </tr>
+        <tr>
+          <td>결재 올림</td>
+          <td>수집된 기록에서 체크 후 <strong>선택 결재 올림</strong>을 누릅니다. 잘못 올린 것은 <strong>선택 올림 취소</strong>로 되돌립니다.</td>
+        </tr>
+        <tr>
+          <td>결재 완료 비교</td>
+          <td>결재 완료된 목록을 붙여넣고 비교하면 완료, 시간 상이, 일지 누락, 결재 누락을 확인합니다.</td>
+        </tr>
+        <tr>
+          <td>CSV</td>
+          <td>현재 월의 집계 목록을 엑셀에서 열 수 있는 CSV로 저장합니다.</td>
+        </tr>
+        <tr>
+          <td>백업 / 복원</td>
+          <td>전체 또는 선택 직원의 기록을 백업하고, 사라진 기록을 복원할 수 있습니다.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>결재 완료 비교 붙여넣기 예시</h3>
+    <pre>노용주  2026-04-23  18:00 ~ 20:00  02:00
+박원준  2026-04-23  18:00 ~ 21:00  03:00
+이호중  2026-04-27  18:00 ~ 21:00  03:00</pre>
+
+    <h2 id="backup">10. 백업과 업데이트</h2>
+    <ul>
+      <li>직원 본인 기록은 저장/수정/삭제 시 자동 백업됩니다.</li>
+      <li><strong>내 백업</strong>에서 직접 백업을 만들거나 불러올 수 있습니다.</li>
+      <li>관리자는 전체 집계에서 직원별 또는 전체 백업을 만들 수 있습니다.</li>
+      <li>새 EXE로 업데이트할 때는 기존 데이터 루트 폴더를 그대로 다시 선택하면 이전 기록을 이어서 볼 수 있습니다.</li>
+    </ul>
+
+    <table>
+      <thead>
+        <tr>
+          <th>구분</th>
+          <th>저장 위치</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>프로그램 설정</td>
+          <td><code>%APPDATA%\OvertimeJournal\settings.json</code></td>
+        </tr>
+        <tr>
+          <td>직원 야근일지</td>
+          <td><code>데이터루트\직원이름\야근일지\entries</code></td>
+        </tr>
+        <tr>
+          <td>개인 백업</td>
+          <td><code>데이터루트\직원이름\야근일지\backups</code></td>
+        </tr>
+        <tr>
+          <td>대리 삭제 휴지통</td>
+          <td>각 직원의 야근일지 폴더 아래 휴지통 영역</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="faq">11. 자주 헷갈리는 부분</h2>
+    <h3>직원들도 PyInstaller를 받아야 하나요?</h3>
+    <p>아니요. 빌드된 <code>야근일지_수정본8.exe</code>만 실행하면 됩니다. PyInstaller는 EXE를 만드는 PC에만 필요합니다.</p>
+
+    <h3>EXE만 전달하면 되나요?</h3>
+    <p>일반 직원에게는 EXE만 전달하면 됩니다. 데이터는 공유 드라이브의 데이터 루트에 저장되고, 개인 설정은 각 PC의 AppData에 저장됩니다.</p>
+
+    <h3>수집 직원이 안 보이면?</h3>
+    <p>데이터 루트 폴더 바로 아래에 직원 이름 폴더가 있는지 확인한 뒤, 설정 탭의 <strong>수집 직원 선택</strong>에서 <strong>새로고침</strong>을 누릅니다.</p>
+
+    <h3>출퇴근 기록이 있는데 확인 필요가 안 뜨면?</h3>
+    <p>출퇴근 기록 폴더가 등록되어 있는지, 파일 안의 이름이 직원 폴더명과 맞는지, 퇴근 시간이 확인 기준 이후인지 확인합니다.</p>
+
+    <h3>브라우저를 닫으면 프로그램도 꺼지나요?</h3>
+    <p>현재 버전은 브라우저 창을 닫으면 서버도 같이 종료되도록 구성되어 있습니다. 다시 사용하려면 EXE를 다시 실행하면 됩니다.</p>
+
+    <div class="tip">
+      <strong>운영 추천</strong>
+      처음에는 직원 1~2명으로 실제 입력, 수정, 삭제, 결재 올림, 결재 완료 비교까지 한 번씩 테스트한 뒤 전체 직원에게 배포하는 게 좋습니다.
+    </div>
+
+    <p class="small">이 설명서는 야근일지_수정본8 기준으로 작성되었습니다.</p>
+  </main>
+</body>
+</html>
