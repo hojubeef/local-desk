@@ -87,6 +87,12 @@
       busy: false,
       output: "아직 실행한 작업이 없습니다."
     },
+    localDeskSettings: {
+      overtimeJournalExe: "",
+      overtimeJournalExeExists: false,
+      showConsole: false,
+      message: "설정 확인 전"
+    },
     filters: {
       posts: { categoryId: "all", tag: "", status: "active", keyword: "" },
       apps: { categoryId: "all", tag: "", status: "active", keyword: "" },
@@ -97,6 +103,8 @@
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+  const clientId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  let clientPingTimer = null;
 
   function readJson(key, fallback) {
     try {
@@ -444,6 +452,37 @@
     return payload;
   }
 
+  function sendLifecycle(path) {
+    const body = JSON.stringify({ clientId });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(`${apiBase}${path}`, new Blob([body], { type: "application/json" }));
+      return;
+    }
+    fetch(`${apiBase}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true
+    }).catch(() => {});
+  }
+
+  function startClientLifecycle() {
+    fetchJson("/api/client/open", {
+      method: "POST",
+      body: JSON.stringify({ clientId })
+    }).catch(() => {});
+    clientPingTimer = window.setInterval(() => {
+      fetchJson("/api/client/ping", {
+        method: "POST",
+        body: JSON.stringify({ clientId })
+      }).catch(() => {});
+    }, 5000);
+    window.addEventListener("pagehide", () => {
+      if (clientPingTimer) window.clearInterval(clientPingTimer);
+      sendLifecycle("/api/client/close");
+    });
+  }
+
   function gitResultText(result) {
     if (!result) return "";
     return [
@@ -497,6 +536,22 @@
     $("#gitActionOutput").textContent = state.git.output;
   }
 
+  function renderOvertimeLauncher() {
+    const pathNode = $("#overtimeExePathText");
+    if (!pathNode) return;
+    const settings = state.localDeskSettings;
+    const hasPath = Boolean(settings.overtimeJournalExe);
+    pathNode.textContent = hasPath ? settings.overtimeJournalExe : "선택된 파일 없음";
+    $("#overtimeExeState").textContent = hasPath
+      ? settings.overtimeJournalExeExists
+        ? "파일 확인됨"
+        : "파일을 찾을 수 없습니다. EXE를 다시 선택해주세요."
+      : "처음 한 번 EXE 파일을 선택해주세요.";
+    $("#launchOvertimeJournal").disabled = !settings.overtimeJournalExeExists;
+    $("#showLocalDeskConsole").checked = Boolean(settings.showConsole);
+    $("#overtimeLauncherStatus").textContent = settings.message || "대기 중";
+  }
+
   async function loadGitStatus() {
     state.git.busy = true;
     renderGit();
@@ -532,6 +587,74 @@
       state.git.busy = false;
       renderGit();
     }
+  }
+
+  async function loadLocalDeskSettings() {
+    try {
+      const payload = await fetchJson("/api/local-desk/settings");
+      state.localDeskSettings = {
+        ...state.localDeskSettings,
+        ...(payload.settings || {}),
+        message: "설정 확인 완료"
+      };
+    } catch (error) {
+      state.localDeskSettings.message = error.message;
+    }
+    renderOvertimeLauncher();
+  }
+
+  async function saveLocalDeskSettings(partial) {
+    const payload = await fetchJson("/api/local-desk/settings", {
+      method: "POST",
+      body: JSON.stringify({
+        ...state.localDeskSettings,
+        ...partial
+      })
+    });
+    state.localDeskSettings = {
+      ...state.localDeskSettings,
+      ...(payload.settings || {}),
+      message: "설정 저장 완료"
+    };
+    renderOvertimeLauncher();
+  }
+
+  async function pickOvertimeExe() {
+    try {
+      const payload = await fetchJson("/api/local-desk/select-overtime-exe", {
+        method: "POST",
+        body: JSON.stringify({
+          initialFile: state.localDeskSettings.overtimeJournalExe || "",
+          title: "야근일지 EXE 선택"
+        })
+      });
+      if (payload.cancelled) return;
+      state.localDeskSettings = {
+        ...state.localDeskSettings,
+        ...(payload.settings || {}),
+        message: "야근일지 EXE 연결 완료"
+      };
+    } catch (error) {
+      state.localDeskSettings.message = error.message;
+    }
+    renderOvertimeLauncher();
+  }
+
+  async function launchOvertimeJournal() {
+    try {
+      const payload = await fetchJson("/api/local-desk/launch-overtime", {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      state.localDeskSettings = {
+        ...state.localDeskSettings,
+        ...(payload.settings || {}),
+        message: payload.message || "야근일지를 실행했습니다."
+      };
+    } catch (error) {
+      state.localDeskSettings.message = error.message;
+    }
+    renderOvertimeLauncher();
   }
 
   function calendarMonthKey() {
@@ -1344,6 +1467,7 @@
     renderLinks();
     renderCalendar();
     renderGit();
+    renderOvertimeLauncher();
   }
 
   function addCategory(type, name, parentId) {
@@ -1841,6 +1965,17 @@
       event.preventDefault();
       runGitAction("commit", { message: $("#gitCommitMessage").value.trim() });
     });
+    $("#pickOvertimeExe").addEventListener("click", pickOvertimeExe);
+    $("#refreshOvertimeLauncher").addEventListener("click", loadLocalDeskSettings);
+    $("#launchOvertimeJournal").addEventListener("click", launchOvertimeJournal);
+    $("#showLocalDeskConsole").addEventListener("change", async (event) => {
+      try {
+        await saveLocalDeskSettings({ showConsole: event.target.checked });
+      } catch (error) {
+        state.localDeskSettings.message = error.message;
+        renderOvertimeLauncher();
+      }
+    });
 
     document.addEventListener("click", (event) => {
       const homeDateButton = event.target.closest("[data-home-date]");
@@ -1939,10 +2074,12 @@
   }
 
   async function init() {
+    startClientLifecycle();
     $("#todayText").textContent = todayLabel();
     $("#eventDate").value = todayIso();
     state.calendarMonth = new Date();
     await loadServerPortalData();
+    await loadLocalDeskSettings();
     seedData();
     bindEvents();
     renderAll();

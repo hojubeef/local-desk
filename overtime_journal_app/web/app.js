@@ -17,7 +17,10 @@
       collectFolders: [],
       attendanceFolders: [],
       hideOldIssues: true,
-      startupEnabled: false
+      startupEnabled: false,
+      theme: "dark",
+      proxyFeatureEnabled: false,
+      adminFeatureEnabled: false
     },
     parsedEntries: [],
     parseErrors: [],
@@ -117,6 +120,16 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
+  function todayKey() {
+    return dayKey(new Date());
+  }
+
+  function localDateKey(value) {
+    const date = new Date(value || "");
+    if (Number.isNaN(date.getTime())) return "";
+    return dayKey(date);
+  }
+
   function dotDate(key) {
     const date = new Date(`${key}T00:00:00`);
     return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}(${weekdays[date.getDay()]})`;
@@ -133,6 +146,10 @@
 
   function entryTime(entry) {
     return `${entry.startTime || ""}~${entry.endTime || ""}`;
+  }
+
+  function entryCopyText(entry) {
+    return `${dotDate(entry.date)} ${entryTime(entry)}\n${entry.work || ""}`.trimEnd();
   }
 
   function entryMonth(entry) {
@@ -156,8 +173,18 @@
     return $("#baseFolder")?.value.trim() || "";
   }
 
+  function proxyFeatureEnabled() {
+    const node = $("#proxyFeatureEnabled");
+    return node ? node.checked === true : state.settings.proxyFeatureEnabled === true;
+  }
+
+  function adminFeatureEnabled() {
+    const node = $("#adminFeatureEnabled");
+    return node ? node.checked === true : state.settings.adminFeatureEnabled === true;
+  }
+
   function proxyModeEnabled() {
-    return $("#proxyModeEnabled")?.checked === true;
+    return proxyFeatureEnabled() && $("#proxyModeEnabled")?.checked === true;
   }
 
   function collectFolders() {
@@ -200,6 +227,9 @@
       employeeRanks: state.settings.employeeRanks || {},
       collectFolders: collectFolders(),
       attendanceFolders: attendanceFolders(),
+      theme: $("#themeMode")?.value || state.settings.theme || "dark",
+      proxyFeatureEnabled: $("#proxyFeatureEnabled")?.checked === true,
+      adminFeatureEnabled: $("#adminFeatureEnabled")?.checked === true,
       ...attendanceOptions()
     };
   }
@@ -239,6 +269,38 @@
     `).join("");
   }
 
+  function normalizedTheme(theme) {
+    return theme === "light" ? "light" : "dark";
+  }
+
+  function applyTheme(theme) {
+    const value = normalizedTheme(theme);
+    document.documentElement.dataset.theme = value;
+    document.documentElement.style.colorScheme = value;
+    const button = $("#themeToggleButton");
+    if (button) button.textContent = value === "dark" ? "밝은 모드" : "어두운 모드";
+  }
+
+  function renderFeatureVisibility() {
+    const proxyOn = proxyFeatureEnabled();
+    const adminOn = adminFeatureEnabled();
+    const proxyCard = $("#proxyCard");
+    const proxyMode = $("#proxyModeEnabled");
+    const proxyTools = $("#proxyToolsBody");
+    if (proxyCard) proxyCard.hidden = !proxyOn;
+    if (!proxyOn && proxyMode) proxyMode.checked = false;
+    if (proxyTools) proxyTools.hidden = !proxyModeEnabled();
+    if ($("#proxyCheckList") && !proxyModeEnabled()) $("#proxyCheckList").innerHTML = "";
+    $$("[data-admin-only]").forEach((node) => {
+      node.hidden = !adminOn;
+    });
+    if ($("#adminSettingsDivider")) $("#adminSettingsDivider").hidden = !adminOn;
+    if ($("#adminSettingsBlock")) $("#adminSettingsBlock").hidden = !adminOn;
+    if (!adminOn && (state.activeTab === "employees" || state.activeTab === "admin")) {
+      setTab("quick");
+    }
+  }
+
   function renderSettings(settings) {
     state.settings = {
       employeeName: settings?.employeeName || "",
@@ -256,7 +318,10 @@
       startupEnabled: settings?.startupEnabled === true,
       nightHourlyWage: Number(settings?.nightHourlyWage || 0),
       ignoreMissingCheckIn: settings?.ignoreMissingCheckIn !== false,
-      ignoreMissingCheckOut: settings?.ignoreMissingCheckOut !== false
+      ignoreMissingCheckOut: settings?.ignoreMissingCheckOut !== false,
+      theme: normalizedTheme(settings?.theme || "dark"),
+      proxyFeatureEnabled: settings?.proxyFeatureEnabled === true,
+      adminFeatureEnabled: settings?.adminFeatureEnabled === true
     };
     $("#employeeName").value = state.settings.employeeName;
     $("#dataRoot").value = state.settings.dataRoot;
@@ -269,6 +334,11 @@
     $("#nightHourlyWage").value = state.settings.nightHourlyWage || "";
     $("#ignoreMissingCheckIn").checked = state.settings.ignoreMissingCheckIn;
     $("#ignoreMissingCheckOut").checked = state.settings.ignoreMissingCheckOut;
+    $("#themeMode").value = state.settings.theme;
+    $("#proxyFeatureEnabled").checked = state.settings.proxyFeatureEnabled;
+    $("#adminFeatureEnabled").checked = state.settings.adminFeatureEnabled;
+    applyTheme(state.settings.theme);
+    renderFeatureVisibility();
     renderEmployeePicker();
     renderFolderList("attendance");
   }
@@ -424,7 +494,7 @@
       $("#dataRoot").value = folder;
       await saveSettings();
       await loadMine();
-      await collectAdmin();
+      if (adminFeatureEnabled()) await collectAdmin();
     } catch (error) {
       setStatus(error.message, "warn");
     }
@@ -521,10 +591,19 @@
       state.parseErrors = payload.errors || [];
       renderPreviewProxyAware();
       $("#saveParsedButton").disabled = state.parsedEntries.length === 0;
-      setStatus(`${state.parsedEntries.length}건 인식`, state.parseErrors.length ? "warn" : "ok");
+      setStatus(`작성 내용 ${state.parsedEntries.length}건 확인`, state.parseErrors.length ? "warn" : "ok");
     } catch (error) {
       setStatus(error.message, "warn");
     }
+  }
+
+  function clearPreview() {
+    state.parsedEntries = [];
+    state.parseErrors = [];
+    $("#saveParsedButton").disabled = true;
+    $("#previewCount").textContent = "0건";
+    $("#previewPane").innerHTML = '<div class="empty">입력 내용을 붙여넣고 작성 내용 확인을 누르세요.</div>';
+    setStatus("작성 내용을 초기화했습니다.", "ok");
   }
 
   function tableMarkup(rows, headers) {
@@ -558,7 +637,7 @@
     ` : "";
 
     if (!rows && !errors) {
-      $("#previewPane").innerHTML = '<div class="empty">인식된 야근일지가 없습니다.</div>';
+      $("#previewPane").innerHTML = '<div class="empty">확인된 작성 내용이 없습니다.</div>';
       return;
     }
     $("#previewPane").innerHTML = `
@@ -590,7 +669,7 @@
     ` : "";
 
     if (!rows && !errors) {
-      $("#previewPane").innerHTML = '<div class="empty">인식된 야근일지가 없습니다.</div>';
+      $("#previewPane").innerHTML = '<div class="empty">확인된 작성 내용이 없습니다.</div>';
       return;
     }
     const headers = isProxy
@@ -670,6 +749,7 @@
       renderSuggestionPane();
       renderQuickHelpers();
       renderQuickCalendar();
+      renderTodayAdded();
       return;
     }
     try {
@@ -681,6 +761,7 @@
       renderSuggestionPane();
       renderQuickHelpers();
       renderQuickCalendar();
+      renderTodayAdded();
     } catch (error) {
       setStatus(error.message, "warn");
     }
@@ -893,10 +974,40 @@
     );
   }
 
+  function renderTodayAdded() {
+    const node = $("#todayAddedList");
+    if (!node) return;
+    const today = todayKey();
+    const entries = state.myEntries
+      .filter((entry) => localDateKey(entry.createdAt || entry.updatedAt) === today)
+      .sort((a, b) => String(b.createdAt || b.updatedAt || "").localeCompare(String(a.createdAt || a.updatedAt || "")))
+      .slice(0, 8);
+    if (!entries.length) {
+      node.innerHTML = '<div class="empty compact">오늘 추가한 기록이 없습니다.</div>';
+      return;
+    }
+    node.innerHTML = entries.map((entry) => `
+      <div class="mini-item today-added-item">
+        <span>${escapeHtml(dotDate(entry.date))} ${escapeHtml(entryTime(entry))}<br>${escapeHtml(shortWork(entry.work || "", 52))}</span>
+        <small>${escapeHtml(formatHours(entry.minutes))}</small>
+        <div class="mini-actions">
+          <button class="icon-text" type="button" data-copy-entry="${escapeHtml(entry.id)}">복사</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
   function insertQuickText(text) {
     const textarea = $("#quickText");
     const current = textarea.value.replace(/\s+$/, "");
     textarea.value = current ? `${current}\n${text}` : text;
+    textarea.focus();
+  }
+
+  function insertQuickBlock(text) {
+    const textarea = $("#quickText");
+    const current = textarea.value.replace(/\s+$/, "");
+    textarea.value = current ? `${current}\n\n${text}` : text;
     textarea.focus();
   }
 
@@ -915,7 +1026,9 @@
   function insertDateTemplate(dateValue) {
     const start = state.settings.overtimeStart || $("#overtimeStart").value || "18:00";
     const end = endTimeForQuickDate(dateValue);
-    insertQuickText(`${dotDate(dateValue)} ${start}~${end}`);
+    const name = !proxyModeEnabled() ? currentEmployeeName() : "";
+    const nameLine = name ? `${name}\n` : "";
+    insertQuickBlock(`${nameLine}${dotDate(dateValue)} ${start}~${end}`);
     parseQuickText();
   }
 
@@ -1065,6 +1178,26 @@
     return `${start.getMonth() + 1}/${start.getDate()}~${end.getMonth() + 1}/${end.getDate()}`;
   }
 
+  function monthWeekRangeLabel(start, month) {
+    const monthStart = monthToDate(month);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const visibleStart = start < monthStart ? monthStart : start;
+    const visibleEnd = end > monthEnd ? monthEnd : end;
+    return `${visibleStart.getFullYear()}.${String(visibleStart.getMonth() + 1).padStart(2, "0")}.${String(visibleStart.getDate()).padStart(2, "0")}~${String(visibleEnd.getMonth() + 1).padStart(2, "0")}.${String(visibleEnd.getDate()).padStart(2, "0")}`;
+  }
+
+  function monthWeekInfo(dateValue, month) {
+    const target = monthToDate(month);
+    const first = new Date(target.getFullYear(), target.getMonth(), 1);
+    const calendarStart = new Date(first);
+    calendarStart.setDate(first.getDate() - first.getDay());
+    const weekStart = new Date(`${weekStartKey(dateValue)}T00:00:00`);
+    const index = Math.floor((weekStart - calendarStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    return { index, start: weekStart, key: dayKey(weekStart) };
+  }
+
   function renderWeeklySummary(node, entries, month) {
     const target = monthToDate(month);
     const first = new Date(target.getFullYear(), target.getMonth(), 1);
@@ -1125,6 +1258,54 @@
     if (options.editable) headers.push("");
     if (options.deletable) headers.push("");
     return tableMarkup(rows, headers);
+  }
+
+  function adminEntriesByWeek(entries, month) {
+    const grouped = new Map();
+    entries.forEach((entry) => {
+      const info = monthWeekInfo(entry.date, month);
+      if (!grouped.has(info.key)) {
+        grouped.set(info.key, {
+          ...info,
+          entries: [],
+          minutes: 0,
+        });
+      }
+      const bucket = grouped.get(info.key);
+      bucket.entries.push(entry);
+      bucket.minutes += Number(entry.minutes || 0);
+    });
+    return Array.from(grouped.values()).sort((a, b) => a.start - b.start);
+  }
+
+  function renderAdminEntriesByWeek(entries, month) {
+    if (!entries.length) {
+      return '<div class="empty">수집된 원본 기록이 없습니다.</div>';
+    }
+    const options = {
+      selectable: true,
+      approvalActions: true,
+      editable: proxyModeEnabled(),
+      deletable: proxyModeEnabled(),
+      source: "admin",
+      showRank: true
+    };
+    return `
+      <div class="admin-week-list">
+        ${adminEntriesByWeek(entries, month).map((week) => `
+          <details class="admin-week-group" open>
+            <summary>
+              <span>
+                <strong>${week.index}주차</strong>
+                <small>${escapeHtml(monthWeekRangeLabel(week.start, month))}</small>
+              </span>
+              <em>${week.entries.length}건 · ${escapeHtml(formatHours(week.minutes))}</em>
+            </summary>
+            ${entriesTable(week.entries, options)}
+          </details>
+        `).join("")}
+      </div>
+    `;
   }
 
   function approvalStatusBadge(entry) {
@@ -1389,6 +1570,7 @@
         <span>${escapeHtml(entryTime(entry))} · ${escapeHtml(entry.work || "")} ${approvalStatusBadge(entry)}</span>
         <small>${escapeHtml(formatHours(entry.minutes))}</small>
         <div class="mini-actions">
+          <button class="icon-text" type="button" data-copy-entry="${escapeHtml(entry.id)}">복사</button>
           <button class="icon-text edit-action" type="button" data-edit-entry="${escapeHtml(entry.id)}">수정</button>
           <button class="icon-text danger" type="button" data-delete-entry="${escapeHtml(entry.id)}">삭제</button>
         </div>
@@ -1397,6 +1579,36 @@
     $("#selectedDayEntries").innerHTML = issueMarkup || entryMarkup
       ? `${issueMarkup}${entryMarkup}`
       : '<div class="empty">이 날짜에는 기록이 없습니다.</div>';
+  }
+
+  async function copyToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+
+  async function copyMyEntry(id) {
+    const entry = state.myEntries.find((item) => String(item.id || "") === String(id || ""));
+    if (!entry) {
+      setStatus("복사할 기록을 찾지 못했습니다.", "warn");
+      return;
+    }
+    try {
+      await copyToClipboard(entryCopyText(entry));
+      setStatus("야근일지 형식으로 복사했습니다.", "ok");
+    } catch (error) {
+      setStatus("복사에 실패했습니다.", "warn");
+    }
   }
 
   async function collectAdmin() {
@@ -1816,9 +2028,7 @@
     $("#adminSummaryTable").innerHTML = summaryRows
       ? `${tableMarkup(summaryRows, ["직급", "이름", "총 시간", "일수", "기록"])}${warningMarkup}`
       : `<div class="empty">수집된 기록이 없습니다.</div>${warningMarkup}`;
-    $("#adminEntriesTable").innerHTML = entries.length
-      ? entriesTable(entries, { selectable: true, approvalActions: true, editable: proxyModeEnabled(), deletable: proxyModeEnabled(), source: "admin", showRank: true })
-      : '<div class="empty">수집된 원본 기록이 없습니다.</div>';
+    $("#adminEntriesTable").innerHTML = renderAdminEntriesByWeek(entries, month);
     renderAdminCalendar();
     renderAdminTrash();
   }
@@ -1947,6 +2157,9 @@
   }
 
   function setTab(tab) {
+    if ((tab === "employees" || tab === "admin") && !adminFeatureEnabled()) {
+      tab = "quick";
+    }
     state.activeTab = tab;
     $$(".tab").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
     $$(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${tab}`));
@@ -1985,6 +2198,27 @@
     $("#restoreMyBackupButton").addEventListener("click", restoreMyBackup);
     $("#refreshEmployeesButton").addEventListener("click", refreshDataRootEmployees);
     $("#addAttendanceFolder").addEventListener("click", () => addFolder("attendance"));
+    $("#themeMode").addEventListener("change", () => {
+      applyTheme($("#themeMode").value);
+      state.settings.theme = normalizedTheme($("#themeMode").value);
+    });
+    $("#themeToggleButton").addEventListener("click", async () => {
+      const next = normalizedTheme($("#themeMode").value) === "dark" ? "light" : "dark";
+      $("#themeMode").value = next;
+      applyTheme(next);
+      state.settings.theme = next;
+      try {
+        await saveSettings();
+      } catch (error) {
+        setStatus(error.message, "warn");
+      }
+    });
+    $("#proxyFeatureEnabled").addEventListener("change", () => {
+      renderFeatureVisibility();
+    });
+    $("#adminFeatureEnabled").addEventListener("change", () => {
+      renderFeatureVisibility();
+    });
     $("#proxyCheckButton").addEventListener("click", checkProxyAttendance);
     $("#proxyDraftButton").addEventListener("click", createProxyDraft);
     $("#proxyModeEnabled").addEventListener("change", () => {
@@ -1992,9 +2226,11 @@
       state.parseErrors = [];
       $("#saveParsedButton").disabled = true;
       $("#previewCount").textContent = "0건";
+      $("#previewPane").innerHTML = '<div class="empty">입력 내용을 붙여넣고 작성 내용 확인을 누르세요.</div>';
       $("#proxyStatus").textContent = proxyModeEnabled()
         ? "대리 입력 모드: 직원 이름 줄 아래 야근일지를 적어 저장합니다."
         : "직원 이름 줄 아래에 해당 직원 야근일지를 적으면 직원별 폴더로 저장됩니다.";
+      renderFeatureVisibility();
       renderAdmin();
     });
     $("#sampleButton").addEventListener("click", () => {
@@ -2006,12 +2242,13 @@
         await loadMyAttendanceData();
         renderMine();
         renderSuggestionPane();
-        setStatus("출퇴근 확인 완료", "ok");
+        setStatus("내 퇴근 확인 완료", "ok");
       } catch (error) {
         setStatus(error.message, "warn");
       }
     });
     $("#parseButton").addEventListener("click", parseQuickText);
+    $("#clearPreviewButton").addEventListener("click", clearPreview);
     $("#saveParsedButton").addEventListener("click", saveParsedEntries);
     $("#reloadMine").addEventListener("click", loadMine);
     $("#saveWageButton").addEventListener("click", async () => {
@@ -2104,6 +2341,11 @@
       if (employeeDay) {
         state.employeeSelectedDate = employeeDay.dataset.employeeDate;
         renderEmployeeStatus();
+        return;
+      }
+      const copyButton = event.target.closest("[data-copy-entry]");
+      if (copyButton) {
+        copyMyEntry(copyButton.dataset.copyEntry);
         return;
       }
       const deleteButton = event.target.closest("[data-delete-entry]");

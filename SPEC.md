@@ -27,6 +27,7 @@
 **작업 전 확인한다.**
 - 새 기능을 만들기 전에 이미 구현되어 있는지 먼저 확인한다.
 - 이 SPEC.md, README.md, 그리고 관련 코드를 읽은 뒤에 작업을 시작한다.
+- `overtime_journal_app/`은 별도 단독 앱이므로, 사용자가 야근일지 작업을 명시하지 않았다면 읽거나 수정하지 않는다.
 
 ---
 
@@ -68,6 +69,18 @@
 
 - `scripts/` — 실행 스크립트 (배치 파일, VBS 등)
 - `local/` — Git에 올리지 않는 PC별 개인 파일, 비밀 키, 캐시 등
+- `overtime_journal_app/` — 야근일지 Windows 단독 앱. Local Desk/KOSIS 작업 범위와 분리한다.
+
+### 별도 관리 앱 (`overtime_journal_app/`)
+
+야근일지는 같은 저장소에 둘 수 있지만 이 SPEC의 Local Desk/KOSIS 규칙을 그대로 적용하는 포털 모듈이 아니다.
+
+- 야근일지 관련 요청일 때만 `overtime_journal_app/README.md`와 `overtime_journal_app/SPEC.md`를 읽고 작업한다.
+- KOSIS, 보고서 기초자료, 포털 코어 작업에서는 `overtime_journal_app/`을 기본 탐색 범위에서 제외한다.
+- Local Desk에서 야근일지를 실행해야 할 경우에도, 원칙적으로는 단독 EXE를 실행하는 런처 방식으로 연결하고 야근일지 내부 코드는 분리 유지한다.
+- 왼쪽 사이드바의 `야근일지` 메뉴는 단독 EXE 런처 화면이며, 야근일지 본체 로직은 `overtime_journal_app/` 안에서만 관리한다.
+- Local Desk 자체 실행 옵션은 왼쪽 사이드바의 별도 `설정` 메뉴에서 관리한다. 개별 앱 화면에 공통 설정을 섞지 않는다.
+- 야근일지의 빌드 결과물(`dist/`, `build/`, `*.spec`)은 Git에 올리지 않는다.
 
 ### 현재 구조의 알려진 제약
 
@@ -136,10 +149,10 @@
 ## 7. Git 동기화 규칙
 
 Git에 올리는 것:
-`portal/`, `apps/`, `scripts/`의 코드, `portal/data/portal-data.json`, `README.md`, `SPEC.md`, `.gitignore`
+`portal/`, `apps/`, `scripts/`의 코드, `portal/data/portal-data.json`, `README.md`, `SPEC.md`, `.gitignore`, `overtime_journal_app/`의 소스와 문서
 
 Git에 올리지 않는 것:
-`config.py`, `.env`, `local/` 안의 실제 파일, 엑셀/CSV/ZIP 결과물, `.venv/`, `__pycache__/`
+`config.py`, `.env`, `local/` 안의 실제 파일, 엑셀/CSV/ZIP 결과물, `.venv/`, `__pycache__/`, `overtime_journal_app/build/`, `overtime_journal_app/dist/`, `overtime_journal_app/*.spec`
 
 자세한 제외 규칙은 `.gitignore` 파일 참고.
 
@@ -163,7 +176,7 @@ clone 후 아래 항목을 수동으로 설정해야 함:
 - 로컬 서버: Python HTTP 서버 (`127.0.0.1:8765`)
 - 외부 라이브러리: SheetJS (엑셀), Plotly.js (차트) — CDN으로 로드
 - 동기화: Git + GitHub
-- 실행: Windows 배치 파일 (`Local Desk 실행.bat`)
+- 실행: Windows VBS/배치 파일 (`Local Desk 실행.bat` → `scripts/Local Desk 실행.vbs` → `scripts/Local Desk 실행.bat`)
 
 ---
 

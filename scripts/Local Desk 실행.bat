@@ -1,12 +1,15 @@
 @echo off
 setlocal
 
+set "NO_PAUSE="
+if /I "%~1"=="--no-pause" set "NO_PAUSE=1"
+
 set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%..") do set "ROOT_DIR=%%~fI"
 set "SERVER=%ROOT_DIR%\apps\kosis\web_server.py"
 set "HOST=127.0.0.1"
 set "PORT=8765"
-set "URL=http://%HOST%:%PORT%/portal/index.html?v=20260502-git-panel"
+set "URL=http://%HOST%:%PORT%/portal/index.html?v=20260512-launcher"
 
 echo.
 echo Starting Local Desk...
@@ -17,7 +20,7 @@ echo.
 if not exist "%SERVER%" (
     echo apps\kosis\web_server.py was not found.
     echo Checked: %SERVER%
-    pause
+    if not defined NO_PAUSE pause
     exit /b 1
 )
 
@@ -41,7 +44,7 @@ if defined PYTHON_EXE (
     echo.
     echo Local Desk stopped or could not start. If it is already running, open:
     echo %URL%
-    pause
+    if not defined NO_PAUSE pause
     exit /b %ERRORLEVEL%
 )
 
@@ -52,7 +55,7 @@ if not errorlevel 1 (
     echo.
     echo Local Desk stopped or could not start. If it is already running, open:
     echo %URL%
-    pause
+    if not defined NO_PAUSE pause
     exit /b %ERRORLEVEL%
 )
 
@@ -63,11 +66,11 @@ if not errorlevel 1 (
     echo.
     echo Local Desk stopped or could not start. If it is already running, open:
     echo %URL%
-    pause
+    if not defined NO_PAUSE pause
     exit /b %ERRORLEVEL%
 )
 
 echo Python was not found.
 echo Install Python, create .venv, or run this from Codex where bundled Python exists.
-pause
+if not defined NO_PAUSE pause
 exit /b 1

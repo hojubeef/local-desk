@@ -69,9 +69,10 @@ CLIENT = KosisClient(KOSIS_API_KEY)
 JOBS = {}
 JOB_LOCK = threading.Lock()
 JOB_TTL_SECONDS = 600
-ASSET_VERSION = "20260507-overtime"
+ASSET_VERSION = "20260512-launcher"
 PORTAL_DATA_PATH = ROOT_DIR / "portal" / "data" / "portal-data.json"
 LOCAL_DIR = ROOT_DIR / "local"
+LOCAL_DESK_SETTINGS_PATH = LOCAL_DIR / "local-desk-settings.json"
 OVERTIME_SETTINGS_PATH = LOCAL_DIR / "overtime-journal" / "settings.json"
 GOOGLE_CREDENTIALS_PATH = LOCAL_DIR / "secrets" / "google-calendar-credentials.json"
 GOOGLE_TOKEN_PATH = LOCAL_DIR / "secrets" / "google-calendar-token.json"
@@ -83,6 +84,7 @@ GOOGLE_CALENDAR_SCOPES = [
 GOOGLE_TIME_ZONE = "Asia/Seoul"
 GOOGLE_OAUTH_STATES = {}
 GOOGLE_OAUTH_LOCK = threading.Lock()
+CLIENT_TIMEOUT_SECONDS = 15
 
 
 def load_region_data() -> dict[str, list[str]]:
@@ -489,6 +491,58 @@ def write_json_file(path, data):
     temp_path.replace(path)
 
 
+def read_json_file_or_default(path, fallback):
+    try:
+        if not path.exists():
+            return fallback
+        return read_json_file(path)
+    except Exception:
+        return fallback
+
+
+def local_desk_settings_payload(data=None):
+    data = data if isinstance(data, dict) else read_json_file_or_default(LOCAL_DESK_SETTINGS_PATH, {})
+    overtime_exe = safe_text(data.get("overtimeJournalExe")).strip()
+    return {
+        "overtimeJournalExe": overtime_exe,
+        "overtimeJournalExeExists": bool(overtime_exe and Path(overtime_exe).exists()),
+        "showConsole": bool(data.get("showConsole", False)),
+        "settingsPath": relative_workspace_path(LOCAL_DESK_SETTINGS_PATH),
+    }
+
+
+def save_local_desk_settings(data):
+    current = local_desk_settings_payload()
+    merged = {
+        **current,
+        **(data if isinstance(data, dict) else {}),
+    }
+    payload = local_desk_settings_payload(merged)
+    write_json_file(LOCAL_DESK_SETTINGS_PATH, payload)
+    return payload
+
+
+def choose_exe_file(initial_file="", title="실행 파일 선택"):
+    import tkinter as tk
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    options = {
+        "title": title,
+        "filetypes": [("실행 파일", "*.exe"), ("모든 파일", "*.*")],
+    }
+    initial_path = Path(initial_file) if initial_file else None
+    if initial_path:
+        initial_dir = initial_path.parent if initial_path.suffix else initial_path
+        if initial_dir.exists():
+            options["initialdir"] = str(initial_dir)
+    selected = filedialog.askopenfilename(**options)
+    root.destroy()
+    return selected or ""
+
+
 def sanitize_portal_data_for_git(data):
     if not isinstance(data, dict):
         return data
@@ -628,6 +682,63 @@ def google_token_scopes(token):
 
 def google_token_has_required_scopes(token):
     return set(GOOGLE_CALENDAR_SCOPES).issubset(google_token_scopes(token))
+
+
+class LocalDeskServer(ThreadingHTTPServer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client_lock = threading.Lock()
+        self.clients = {}
+        self.shutdown_timer = None
+
+    def mark_client_open(self, client_id):
+        if not client_id:
+            return
+        with self.client_lock:
+            self.clients[client_id] = time.time()
+            if self.shutdown_timer:
+                self.shutdown_timer.cancel()
+                self.shutdown_timer = None
+
+    def mark_client_ping(self, client_id):
+        if not client_id:
+            return
+        with self.client_lock:
+            if client_id in self.clients:
+                self.clients[client_id] = time.time()
+
+    def mark_client_close(self, client_id):
+        with self.client_lock:
+            if client_id:
+                self.clients.pop(client_id, None)
+            self._schedule_shutdown_if_idle_locked()
+
+    def _schedule_shutdown_if_idle_locked(self):
+        now = time.time()
+        self.clients = {
+            client_id: last_seen
+            for client_id, last_seen in self.clients.items()
+            if now - last_seen <= CLIENT_TIMEOUT_SECONDS
+        }
+        if self.clients or self.shutdown_timer:
+            return
+        self.shutdown_timer = threading.Timer(2.0, self._shutdown_if_idle)
+        self.shutdown_timer.daemon = True
+        self.shutdown_timer.start()
+
+    def _shutdown_if_idle(self):
+        with self.client_lock:
+            self.shutdown_timer = None
+            now = time.time()
+            self.clients = {
+                client_id: last_seen
+                for client_id, last_seen in self.clients.items()
+                if now - last_seen <= CLIENT_TIMEOUT_SECONDS
+            }
+            if self.clients:
+                return
+        print("No Local Desk browser clients remain. Stopping server...")
+        threading.Thread(target=self.shutdown, daemon=True).start()
 
 
 def post_form(url, data):
@@ -932,6 +1043,9 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
                 "rootDir": str(ROOT_DIR),
             })
             return
+        if path == "/api/local-desk/settings":
+            self.handle_local_desk_settings_get()
+            return
         if path == "/api/kosis/regions":
             self.write_json({"regions": REGION_DATA})
             return
@@ -969,6 +1083,30 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == "/api/client/open":
+            body = self.read_json_body()
+            self.server.mark_client_open(safe_text(body.get("clientId")))
+            self.write_json({"ok": True})
+            return
+        if path == "/api/client/ping":
+            body = self.read_json_body()
+            self.server.mark_client_ping(safe_text(body.get("clientId")))
+            self.write_json({"ok": True})
+            return
+        if path == "/api/client/close":
+            body = self.read_json_body()
+            self.server.mark_client_close(safe_text(body.get("clientId")))
+            self.write_json({"ok": True})
+            return
+        if path == "/api/local-desk/settings":
+            self.handle_local_desk_settings_post()
+            return
+        if path == "/api/local-desk/select-overtime-exe":
+            self.handle_local_desk_select_overtime_exe()
+            return
+        if path == "/api/local-desk/launch-overtime":
+            self.handle_local_desk_launch_overtime()
+            return
         if path == "/api/portal/data":
             self.handle_portal_data_post()
             return
@@ -1239,6 +1377,58 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
             self.write_json(overtime_collect_entries(body.get("root") or body.get("adminRoot")))
         except OvertimeError as error:
             self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_local_desk_settings_get(self):
+        try:
+            self.write_json({"ok": True, "settings": local_desk_settings_payload()})
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_local_desk_settings_post(self):
+        try:
+            self.write_json({"ok": True, "settings": save_local_desk_settings(self.read_json_body())})
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_local_desk_select_overtime_exe(self):
+        body = self.read_json_body()
+        try:
+            selected = choose_exe_file(
+                safe_text(body.get("initialFile")),
+                safe_text(body.get("title"), "야근일지 EXE 선택"),
+            )
+            if not selected:
+                self.write_json({"ok": True, "cancelled": True, "file": ""})
+                return
+            settings = save_local_desk_settings({"overtimeJournalExe": selected})
+            self.write_json({"ok": True, "cancelled": False, "file": selected, "settings": settings})
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=500)
+
+    def handle_local_desk_launch_overtime(self):
+        try:
+            settings = local_desk_settings_payload()
+            exe_text = safe_text(settings.get("overtimeJournalExe")).strip()
+            if not exe_text:
+                self.write_json({"error": "야근일지 EXE 파일을 먼저 선택해주세요."}, status=400)
+                return
+            exe_path = Path(exe_text)
+            if not exe_path.exists() or not exe_path.is_file():
+                self.write_json({"error": "선택한 야근일지 EXE 파일을 찾을 수 없습니다."}, status=400)
+                return
+            if exe_path.suffix.lower() != ".exe":
+                self.write_json({"error": "EXE 파일만 실행할 수 있습니다."}, status=400)
+                return
+            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            subprocess.Popen(
+                [str(exe_path)],
+                cwd=str(exe_path.parent),
+                close_fds=True,
+                creationflags=creationflags,
+            )
+            self.write_json({"ok": True, "message": "야근일지를 실행했습니다.", "settings": settings})
         except Exception as error:
             self.write_json({"error": str(error)}, status=500)
 
@@ -1536,7 +1726,7 @@ def main(argv=None):
     args = parse_args(argv or sys.argv[1:])
     url = f"http://{args.host}:{args.port}/portal/index.html?v={ASSET_VERSION}"
     try:
-        server = ThreadingHTTPServer((args.host, args.port), LocalDeskHandler)
+        server = LocalDeskServer((args.host, args.port), LocalDeskHandler)
     except OSError as error:
         print(f"Could not start Local Desk on {args.host}:{args.port}: {error}")
         print(f"If Local Desk is already running, open {url}")

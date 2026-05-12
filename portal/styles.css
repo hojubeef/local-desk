@@ -135,6 +135,19 @@ button {
   box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
 }
 
+.nav-sub-item {
+  min-height: 36px;
+  margin-left: 18px;
+  padding-left: 12px;
+  color: var(--muted-2);
+  font-size: 13px;
+}
+
+.nav-sub-item .nav-dot {
+  width: 5px;
+  height: 5px;
+}
+
 .sidebar-foot {
   margin-top: auto;
   display: grid;
@@ -319,6 +332,56 @@ h2 {
 
 .app-grid.compact {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.overtime-launcher-layout,
+.local-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  max-width: 980px;
+}
+
+.launcher-path-card,
+.launcher-guide {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.launcher-path-card span,
+.launcher-path-card small,
+.launcher-guide p,
+.launcher-check + .hint {
+  color: var(--muted);
+}
+
+.launcher-path-card strong {
+  overflow-wrap: anywhere;
+  color: var(--accent-2);
+  font-size: 14px;
+}
+
+.launcher-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.launcher-note {
+  margin-top: 12px;
+}
+
+.launcher-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-card {
@@ -2037,12 +2100,18 @@ label {
     white-space: nowrap;
   }
 
+  .nav-sub-item {
+    margin-left: 0;
+  }
+
   .sidebar-foot {
     display: none;
   }
 
   .dashboard-grid,
   .home-grid,
+  .overtime-launcher-layout,
+  .local-settings-layout,
   .board-layout,
   .library-layout,
   .apps-library-layout,

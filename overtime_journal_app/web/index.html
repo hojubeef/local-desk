@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>야근일지</title>
-  <link rel="stylesheet" href="./styles.css?v=20260507-2">
-  <script defer src="./app.js?v=20260507-2"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260512-3">
+  <script defer src="./app.js?v=20260512-3"></script>
 </head>
 <body>
   <main class="app">
@@ -15,6 +15,7 @@
         <h1>야근일지</h1>
       </div>
       <div class="topbar-actions">
+        <button class="button ghost small" type="button" id="themeToggleButton">밝은 모드</button>
         <span class="status-pill" id="appStatus">준비 중</span>
       </div>
     </header>
@@ -33,9 +34,9 @@
         <div class="setup-note">
           <strong>처음 설정</strong>
           <ol>
-            <li>데이터 루트 폴더 하나를 선택합니다.</li>
-            <li>루트 안의 직원 폴더를 체크해 수집 대상을 정합니다.</li>
-            <li>내 이름과 같은 직원 폴더에 내 기록이 저장됩니다.</li>
+            <li>이름을 입력하고 이호중 웹하드의 <strong>00.야근일지</strong> 폴더를 선택합니다.</li>
+            <li>프로그램이 이름과 같은 직원 폴더를 찾아 그 안의 야근일지 폴더에 저장합니다.</li>
+            <li>대리 입력이나 관리자 집계는 아래 고급 기능을 켰을 때만 표시됩니다.</li>
           </ol>
         </div>
 
@@ -47,11 +48,28 @@
           <label>
             <span>데이터 루트 폴더</span>
             <div class="path-row">
-              <input id="dataRoot" type="text" placeholder="Z:\야근일지데이터">
+              <input id="dataRoot" type="text" placeholder="이호중 웹하드\00.야근일지">
               <button class="button success" type="button" id="pickDataRootFolder">폴더 선택</button>
             </div>
           </label>
           <input id="baseFolder" type="hidden">
+          <label>
+            <span>화면 테마</span>
+            <select id="themeMode">
+              <option value="dark">어두움</option>
+              <option value="light">밝음</option>
+            </select>
+          </label>
+          <div class="advanced-options">
+            <label class="check-option">
+              <input id="proxyFeatureEnabled" type="checkbox">
+              <span>대리 입력 기능 사용</span>
+            </label>
+            <label class="check-option">
+              <input id="adminFeatureEnabled" type="checkbox">
+              <span>관리자 기능 사용</span>
+            </label>
+          </div>
           <label class="check-option startup-option">
             <input id="startupEnabled" type="checkbox">
             <span>컴퓨터 켤 때 자동 실행</span>
@@ -77,9 +95,9 @@
           <small id="myBackupStatus">-</small>
         </div>
 
-        <div class="divider"></div>
+        <div class="divider" id="adminSettingsDivider"></div>
 
-        <details class="settings-section employee-settings-section" open>
+        <details class="settings-section employee-settings-section" id="adminSettingsBlock" open>
           <summary>
             <span>
               <small class="section-label">관리자</small>
@@ -133,8 +151,8 @@
         <nav class="tabs" aria-label="야근일지 화면">
           <button class="tab active" type="button" data-tab="quick">빠른 입력</button>
           <button class="tab" type="button" data-tab="records">내 현황</button>
-          <button class="tab" type="button" data-tab="employees">직원별 현황</button>
-          <button class="tab" type="button" data-tab="admin">전체 집계</button>
+          <button class="tab" type="button" data-tab="employees" data-admin-only>직원별 현황</button>
+          <button class="tab" type="button" data-tab="admin" data-admin-only>전체 집계</button>
           <button class="tab" type="button" data-tab="settings">설정</button>
         </nav>
 
@@ -151,7 +169,7 @@
               <div class="quick-date-card">
                 <div class="mini-head">
                   <strong>날짜 바로 넣기</strong>
-                  <span>날짜를 누르면 기본 연장근무 시간이 입력됩니다.</span>
+                  <span>날짜를 누르면 입력칸에 이름, 날짜, 기본 시간이 들어갑니다.</span>
                 </div>
                 <div class="head-actions compact-actions">
                   <button class="button ghost small" type="button" id="quickPrevMonth">이전</button>
@@ -161,17 +179,27 @@
                 <div class="mini-calendar" id="quickCalendar"></div>
               </div>
 
-              <div class="proxy-card">
+              <div class="check-card">
+                <div>
+                  <strong>내 퇴근 확인</strong>
+                  <span>퇴근 기록은 있는데 일지가 없는 날짜를 찾습니다.</span>
+                </div>
+                <button class="button warning-action small" type="button" id="checkAttendanceButton">확인</button>
+              </div>
+
+              <div class="proxy-card" id="proxyCard" hidden>
                 <label class="check-option">
                   <input id="proxyModeEnabled" type="checkbox">
                   <span>대리 입력 모드</span>
                 </label>
-                <div class="proxy-actions">
-                  <button class="button edit-action small" type="button" id="proxyCheckButton">직원 퇴근 확인</button>
-                  <button class="button warning-action small" type="button" id="proxyDraftButton">어제 대리 초안</button>
+                <div id="proxyToolsBody">
+                  <div class="proxy-actions">
+                    <button class="button edit-action small" type="button" id="proxyCheckButton">직원 퇴근 확인</button>
+                    <button class="button warning-action small" type="button" id="proxyDraftButton">어제 대리 초안</button>
+                  </div>
+                  <small id="proxyStatus">직원 이름 줄 아래에 해당 직원 야근일지를 적으면 직원별 폴더로 저장됩니다.</small>
+                  <div class="proxy-check-list" id="proxyCheckList"></div>
                 </div>
-                <small id="proxyStatus">직원 이름 줄 아래에 해당 직원 야근일지를 적으면 직원별 폴더로 저장됩니다.</small>
-                <div class="proxy-check-list" id="proxyCheckList"></div>
               </div>
 
               <div class="quick-lists">
@@ -208,13 +236,12 @@
               <textarea id="quickText" class="quick-text" spellcheck="false" placeholder="2026.05.06(수) 18:00~20:00&#10;2026년도 하수도 맨홀추락방지시설 설치공사(3차) 도면 작업"></textarea>
 
               <div class="button-help">
-                <span><b>출퇴근 확인</b> 늦은 퇴근인데 일지가 없는 날짜를 찾습니다.</span>
-                <span><b>미리보기</b> 붙여넣은 내용을 날짜, 시간, 업무로 나눕니다.</span>
-                <span><b>저장</b> 내 웹하드 폴더에 JSON 기록을 남깁니다.</span>
+                <span><b>날짜 선택</b> 왼쪽 달력에서 날짜와 기본 시간을 먼저 넣습니다.</span>
+                <span><b>작성 내용 확인</b> 입력 내용을 날짜, 시간, 업무로 나눕니다.</span>
+                <span><b>저장</b> 설정한 이름의 웹하드 폴더에 기록을 남깁니다.</span>
               </div>
               <div class="actions">
-                <button class="button warning-action" type="button" id="checkAttendanceButton">출퇴근 확인</button>
-                <button class="button edit-action" type="button" id="parseButton">미리보기</button>
+                <button class="button edit-action" type="button" id="parseButton">작성 내용 확인</button>
                 <button class="button success" type="button" id="saveParsedButton" disabled>저장</button>
               </div>
             </section>
@@ -223,12 +250,24 @@
               <div class="panel-head">
                 <div>
                   <p class="section-label">확인</p>
-                  <h2>인식 결과</h2>
+                  <h2>작성 내용</h2>
                 </div>
-                <span class="result-count" id="previewCount">0건</span>
+                <div class="head-actions">
+                  <button class="button ghost small" type="button" id="clearPreviewButton">작성 내용 초기화</button>
+                  <span class="result-count" id="previewCount">0건</span>
+                </div>
               </div>
               <div class="preview" id="previewPane">
-                <div class="empty">입력 내용을 붙여넣고 미리보기를 누르세요.</div>
+                <div class="empty">입력 내용을 붙여넣고 작성 내용 확인을 누르세요.</div>
+              </div>
+              <div class="today-added-card">
+                <div class="mini-head">
+                  <strong>오늘 추가한 내용</strong>
+                  <span>오늘 저장한 내 기록을 바로 복사합니다.</span>
+                </div>
+                <div class="mini-list today-added-list" id="todayAddedList">
+                  <div class="empty compact">오늘 추가한 기록이 없습니다.</div>
+                </div>
               </div>
             </section>
           </div>
@@ -273,6 +312,11 @@
                 </div>
               </div>
               <div class="calendar" id="myCalendar"></div>
+              <div class="calendar-legend">
+                <span><i class="legend-dot entry"></i>기록 있음</span>
+                <span><i class="legend-dot issue"></i>확인 필요</span>
+                <span><i class="legend-dot selected"></i>선택한 날짜</span>
+              </div>
             </section>
             <section class="panel">
               <div class="panel-head">

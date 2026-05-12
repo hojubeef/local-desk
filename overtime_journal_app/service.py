@@ -159,6 +159,7 @@ def parse_entries(raw_text: str, employee_name: str = "") -> dict:
     entries = []
     errors = []
     current = None
+    employee_marker = normalize_name(employee_name)
 
     def flush_current():
         if not current:
@@ -180,11 +181,27 @@ def parse_entries(raw_text: str, employee_name: str = "") -> dict:
             parsed["warning"] = "업무내용이 비어 있습니다."
         entries.append(parsed)
 
+    def next_meaningful_line_is_header(start_index: int) -> bool:
+        for next_line in lines[start_index:]:
+            stripped_next = next_line.strip()
+            if not stripped_next:
+                continue
+            try:
+                return parse_header(stripped_next) is not None
+            except OvertimeError:
+                return False
+        return False
+
     for index, line in enumerate(lines, start=1):
         stripped = line.strip()
         if not stripped:
             if current:
                 current["workLines"].append("")
+            continue
+        if employee_marker and normalize_name(stripped) == employee_marker and (not current or next_meaningful_line_is_header(index)):
+            if current:
+                flush_current()
+                current = None
             continue
         try:
             parsed = parse_header(stripped)

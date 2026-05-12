@@ -12,7 +12,12 @@ portal/          홈페이지 UI (코어)
 apps/            기능 모듈 (KOSIS 통계, 보고서 기초자료 등)
 scripts/         실행 스크립트
 local/           이 PC에서만 쓰는 개인 파일 (Git 제외)
+overtime_journal_app/
+                 야근일지 단독 앱. Local Desk/KOSIS와 별도 관리
 ```
+
+`overtime_journal_app/`은 같은 저장소 안에 둘 수 있지만, 구조상 Local Desk의 하위 모듈이 아니라 별도 Windows 앱입니다.
+KOSIS나 Local Desk를 수정할 때는 이 폴더를 기본 참고 대상으로 보지 않고, 야근일지 관련 작업일 때만 해당 폴더의 README/SPEC을 읽습니다.
 
 ## 실행
 
@@ -20,7 +25,8 @@ local/           이 PC에서만 쓰는 개인 파일 (Git 제외)
 Local Desk 실행.bat
 ```
 
-로컬 서버가 켜지고 브라우저에서 `http://127.0.0.1:8765`로 접속됩니다.
+기본 실행은 CMD 창을 숨기고 로컬 서버를 켭니다. 브라우저에서 `http://127.0.0.1:8765`로 접속됩니다.
+오류 확인이 필요하면 왼쪽 사이드바의 `설정` 화면에서 `다음 실행부터 CMD 창 보이게 열기`를 체크한 뒤 다시 실행합니다.
 
 ## 새 PC 세팅
 
@@ -42,3 +48,10 @@ Local Desk의 Git 탭에서 커밋, 받기, 올리기를 할 수 있습니다.
 
 - `apps/kosis/` — KOSIS 통계 검색, 미리보기, 엑셀 내보내기
 - `apps/report_data/` — 상하수도 보고서 기초자료 후보 추천
+
+## 별도 관리 앱
+
+- `overtime_journal_app/` — 야근일지 입력/집계 단독 앱. 별도 [README](./overtime_journal_app/README.md)와 [SPEC](./overtime_journal_app/SPEC.md)을 따릅니다.
+
+Local Desk 왼쪽 사이드바의 `기능` 아래 `야근일지` 메뉴는 이 단독 앱의 EXE를 선택하고 실행하는 런처 역할만 합니다. Local Desk 자체 실행 옵션은 별도 `설정` 메뉴에서 관리합니다.
+빌드 결과물인 `overtime_journal_app/dist/`, `build/`, `*.spec` 등은 Git에 올리지 않습니다.

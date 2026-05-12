@@ -1,23 +1,20 @@
 @echo off
 setlocal
 
-set "SCRIPT_DIR=%~dp0scripts"
-set "LAUNCHER="
+set "LAUNCHER=%~dp0scripts\Local Desk 실행.vbs"
+set "FALLBACK=%~dp0scripts\Local Desk 실행.bat"
 
-for %%F in ("%SCRIPT_DIR%\Local Desk*.bat") do (
-    if exist "%%~fF" (
-        set "LAUNCHER=%%~fF"
-        goto :found
-    )
+if exist "%LAUNCHER%" (
+    wscript.exe "%LAUNCHER%"
+    exit /b 0
 )
 
-:found
-if not defined LAUNCHER (
-    echo Local Desk launcher was not found in scripts.
-    echo Expected something like: scripts\Local Desk*.bat
-    pause
-    exit /b 1
+if exist "%FALLBACK%" (
+    call "%FALLBACK%"
+    exit /b %ERRORLEVEL%
 )
 
-call "%LAUNCHER%"
-exit /b %ERRORLEVEL%
+echo Local Desk launcher was not found.
+echo Expected: %LAUNCHER%
+pause
+exit /b 1

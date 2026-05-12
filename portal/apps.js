@@ -24,18 +24,6 @@ window.portalApps = [
     favorite: true
   },
   {
-    id: "overtime-journal",
-    name: "야근일지",
-    type: "page",
-    path: "./pages/overtime.html",
-    description: "채팅 형식 야근일지를 파싱하고 월별·직원별로 집계",
-    initials: "OT",
-    categoryId: "app-tools",
-    tags: ["야근", "집계", "웹하드"],
-    status: "active",
-    favorite: true
-  },
-  {
     id: "kosis-gui",
     name: "KOSIS GUI",
     type: "local",

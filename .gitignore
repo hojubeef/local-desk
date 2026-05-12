@@ -18,6 +18,14 @@ exports/
 *.csv
 *.zip
 
+# Overtime Journal standalone app build/runtime outputs
+overtime_journal_app/build/
+overtime_journal_app/dist/
+overtime_journal_app/__pycache__/
+overtime_journal_app/.edge-print-profile/
+overtime_journal_app/tmponnvjqza/
+overtime_journal_app/*.spec
+
 # Portal data that should sync across PCs
 !portal/data/
 !portal/data/portal-data.json

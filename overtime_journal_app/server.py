@@ -221,6 +221,9 @@ def normalize_settings(data=None):
     startup_enabled = data.get("startupEnabled")
     if startup_enabled is None:
         startup_enabled = is_startup_enabled()
+    theme = str(data.get("theme") or "dark").strip().lower()
+    if theme not in {"dark", "light"}:
+        theme = "dark"
     return {
         "employeeName": employee_name,
         "dataRoot": data_root,
@@ -241,6 +244,9 @@ def normalize_settings(data=None):
         "startupScript": str(startup_script_path()) if os.getenv("APPDATA") else "",
         "ignoreMissingCheckIn": bool(data.get("ignoreMissingCheckIn", True)),
         "ignoreMissingCheckOut": bool(data.get("ignoreMissingCheckOut", True)),
+        "theme": theme,
+        "proxyFeatureEnabled": bool(data.get("proxyFeatureEnabled", False)),
+        "adminFeatureEnabled": bool(data.get("adminFeatureEnabled", False)),
         "updatedAt": str(data.get("updatedAt") or ""),
     }
 

@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Local Desk</title>
-  <link rel="stylesheet" href="./styles.css?v=20260507-overtime">
-  <script defer src="./apps.js?v=20260507-overtime"></script>
-  <script defer src="./app.js?v=20260507-overtime"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260512-launcher">
+  <script defer src="./apps.js?v=20260512-launcher"></script>
+  <script defer src="./app.js?v=20260512-launcher"></script>
 </head>
 <body>
   <div class="shell">
@@ -44,9 +44,17 @@
           <span class="nav-dot" aria-hidden="true"></span>
           기능
         </button>
+        <button class="nav-item nav-sub-item" type="button" data-section="overtime-launcher">
+          <span class="nav-dot" aria-hidden="true"></span>
+          야근일지
+        </button>
         <button class="nav-item" type="button" data-section="git">
           <span class="nav-dot" aria-hidden="true"></span>
           Git
+        </button>
+        <button class="nav-item" type="button" data-section="settings">
+          <span class="nav-dot" aria-hidden="true"></span>
+          설정
         </button>
       </nav>
 
@@ -539,6 +547,31 @@
         </div>
       </section>
 
+      <section class="section" id="section-overtime-launcher" aria-labelledby="overtimeLauncherHeading">
+        <div class="overtime-launcher-layout">
+          <section class="panel overtime-launcher-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">단독 앱</p>
+                <h2 id="overtimeLauncherHeading">야근일지 실행</h2>
+              </div>
+              <button class="primary-button small" type="button" id="launchOvertimeJournal">실행</button>
+            </div>
+            <p class="hint">야근일지는 Local Desk 안에 넣는 기능이 아니라 별도 EXE 앱으로 실행합니다. EXE를 새로 받으면 여기서 경로만 다시 선택하면 됩니다.</p>
+            <div class="launcher-path-card">
+              <span>연결된 EXE</span>
+              <strong id="overtimeExePathText">선택된 파일 없음</strong>
+              <small id="overtimeExeState">처음 한 번 EXE 파일을 선택해주세요.</small>
+            </div>
+            <div class="launcher-actions">
+              <button class="text-button" type="button" id="pickOvertimeExe">EXE 파일 선택</button>
+              <button class="text-button" type="button" id="refreshOvertimeLauncher">상태 확인</button>
+            </div>
+            <div class="sync-note launcher-note" id="overtimeLauncherStatus">대기 중</div>
+          </section>
+        </div>
+      </section>
+
       <section class="section" id="section-git" aria-labelledby="gitHeading">
         <div class="git-layout">
           <section class="panel">
@@ -615,6 +648,29 @@
               달력 화면에서 '연결' 누르면 토큰이 자동 생성됨</p>
               <p><strong>3. 새 앱 추가 시</strong><br>
               API 키가 필요하면 <code>config.example</code> 파일을 만들고, 실제 키 파일은 <code>.gitignore</code>에 추가</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="section" id="section-settings" aria-labelledby="settingsHeading">
+        <div class="local-settings-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">Local Desk</p>
+                <h2 id="settingsHeading">실행 설정</h2>
+              </div>
+            </div>
+            <label class="inline-check launcher-check">
+              <input id="showLocalDeskConsole" type="checkbox">
+              <span>다음 실행부터 CMD 창 보이게 열기</span>
+            </label>
+            <p class="hint">기본은 CMD 창을 숨기고 실행합니다. 오류 확인이 필요할 때만 체크한 뒤 Local Desk를 다시 열면 콘솔 창이 보입니다.</p>
+            <div class="launcher-guide">
+              <p><strong>숨김 실행</strong><br><code>Local Desk 실행.vbs</code> 또는 기존 <code>Local Desk 실행.bat</code>를 사용합니다.</p>
+              <p><strong>오류 확인</strong><br>위 체크를 켠 뒤 다시 실행하면 CMD 창이 보입니다.</p>
+              <p><strong>종료</strong><br>Local Desk 홈페이지 창을 닫으면 로컬 서버도 같이 종료됩니다.</p>
             </div>
           </section>
         </div>

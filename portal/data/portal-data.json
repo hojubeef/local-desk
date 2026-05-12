@@ -167,23 +167,6 @@
         "initials": ""
       }
     },
-    "overtime-journal": {
-      "categoryId": "app-tools",
-      "tags": [
-        "야근",
-        "집계",
-        "웹하드"
-      ],
-      "status": "active",
-      "favorite": true,
-      "overrides": {
-        "name": "",
-        "type": "",
-        "path": "",
-        "description": "",
-        "initials": ""
-      }
-    },
     "kosis-gui": {
       "categoryId": "app-stats",
       "tags": [
@@ -224,6 +207,23 @@
       ],
       "status": "active",
       "favorite": false,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    },
+    "overtime-journal": {
+      "categoryId": "app-tools",
+      "tags": [
+        "야근",
+        "집계",
+        "웹하드"
+      ],
+      "status": "active",
+      "favorite": true,
       "overrides": {
         "name": "",
         "type": "",
