@@ -36,6 +36,7 @@ APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parents[1]
 REPORT_DATA_DIR = ROOT_DIR / "apps" / "report_data"
 OVERTIME_DIR = ROOT_DIR / "apps" / "overtime_journal"
+MAP_CAPTURE_DIR = ROOT_DIR / "apps" / "map_capture"
 
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
@@ -43,6 +44,27 @@ if str(REPORT_DATA_DIR) not in sys.path:
     sys.path.insert(0, str(REPORT_DATA_DIR))
 if str(OVERTIME_DIR) not in sys.path:
     sys.path.insert(0, str(OVERTIME_DIR))
+
+
+def load_map_capture_config():
+    """Map Capture 모듈의 API 키를 안전하게 읽어온다.
+    config.py가 없거나 키가 비어있어도 서버가 죽지 않도록 가드.
+    """
+    try:
+        import importlib.util
+
+        config_path = MAP_CAPTURE_DIR / "config.py"
+        if not config_path.exists():
+            return {"kakaoJsKey": "", "naverClientId": ""}
+        spec = importlib.util.spec_from_file_location("map_capture_config", config_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return {
+            "kakaoJsKey": getattr(module, "KAKAO_JS_KEY", "") or "",
+            "naverClientId": getattr(module, "NAVER_CLIENT_ID", "") or "",
+        }
+    except Exception:
+        return {"kakaoJsKey": "", "naverClientId": ""}
 
 from config import KOSIS_API_KEY  # noqa: E402
 from kosis_client import KosisClient  # noqa: E402
@@ -84,9 +106,6 @@ GOOGLE_CALENDAR_SCOPES = [
 GOOGLE_TIME_ZONE = "Asia/Seoul"
 GOOGLE_OAUTH_STATES = {}
 GOOGLE_OAUTH_LOCK = threading.Lock()
-CLIENT_TIMEOUT_SECONDS = 15
-
-
 def load_region_data() -> dict[str, list[str]]:
     """Read REGION_DATA from app.py without importing the Tkinter GUI."""
     app_py = APP_DIR / "app.py"
@@ -506,7 +525,6 @@ def local_desk_settings_payload(data=None):
     return {
         "overtimeJournalExe": overtime_exe,
         "overtimeJournalExeExists": bool(overtime_exe and Path(overtime_exe).exists()),
-        "showConsole": bool(data.get("showConsole", False)),
         "settingsPath": relative_workspace_path(LOCAL_DESK_SETTINGS_PATH),
     }
 
@@ -689,16 +707,12 @@ class LocalDeskServer(ThreadingHTTPServer):
         super().__init__(*args, **kwargs)
         self.client_lock = threading.Lock()
         self.clients = {}
-        self.shutdown_timer = None
 
     def mark_client_open(self, client_id):
         if not client_id:
             return
         with self.client_lock:
             self.clients[client_id] = time.time()
-            if self.shutdown_timer:
-                self.shutdown_timer.cancel()
-                self.shutdown_timer = None
 
     def mark_client_ping(self, client_id):
         if not client_id:
@@ -711,34 +725,6 @@ class LocalDeskServer(ThreadingHTTPServer):
         with self.client_lock:
             if client_id:
                 self.clients.pop(client_id, None)
-            self._schedule_shutdown_if_idle_locked()
-
-    def _schedule_shutdown_if_idle_locked(self):
-        now = time.time()
-        self.clients = {
-            client_id: last_seen
-            for client_id, last_seen in self.clients.items()
-            if now - last_seen <= CLIENT_TIMEOUT_SECONDS
-        }
-        if self.clients or self.shutdown_timer:
-            return
-        self.shutdown_timer = threading.Timer(2.0, self._shutdown_if_idle)
-        self.shutdown_timer.daemon = True
-        self.shutdown_timer.start()
-
-    def _shutdown_if_idle(self):
-        with self.client_lock:
-            self.shutdown_timer = None
-            now = time.time()
-            self.clients = {
-                client_id: last_seen
-                for client_id, last_seen in self.clients.items()
-                if now - last_seen <= CLIENT_TIMEOUT_SECONDS
-            }
-            if self.clients:
-                return
-        print("No Local Desk browser clients remain. Stopping server...")
-        threading.Thread(target=self.shutdown, daemon=True).start()
 
 
 def post_form(url, data):
@@ -1048,6 +1034,9 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
             return
         if path == "/api/kosis/regions":
             self.write_json({"regions": REGION_DATA})
+            return
+        if path == "/api/map-capture/config":
+            self.write_json(load_map_capture_config())
             return
         if path == "/api/report-data/catalog":
             self.handle_report_data_catalog()

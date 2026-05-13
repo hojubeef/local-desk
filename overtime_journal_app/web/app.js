@@ -7,6 +7,77 @@
 
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
   const rankOptions = ["전무", "상무", "이사", "차장", "과장", "대리", "사원"];
+  const secretModeStorageKey = "overtimeJournal.secretMode";
+  const secretModePassword = "dlffbek";
+  const secretCopy = {
+    setupTitle: "처음 설정, 첫 단추부터 야근",
+    setupName: "이름과 폴더를 맞춥니다. 여기서 틀리면 내 야근이 다른 차원으로 출근합니다.",
+    setupFolder: "00.야근일지 폴더를 고릅니다. 데이터도 길을 잃으면 퇴근이 늦어집니다.",
+    setupAdvanced: "대리 입력과 관리자 집계는 필요할 때만 켭니다. 권한은 늘고 마음의 짐도 같이 옵니다.",
+    employeeNameHelp: "직원 폴더 이름과 똑같이 적습니다. 한 글자 차이로 다른 세계선의 내가 야근합니다.",
+    dataRootHelp: "직원 폴더들이 모여 있는 본진입니다. 대충 고르면 기록이 산으로 출근합니다.",
+    themeHelp: "어두움은 눈 보호, 밝음은 현실 직시입니다. 취향대로 고통의 밝기를 조절하세요.",
+    proxyHelp: "남의 야근까지 대신 적는 기능입니다. 신뢰의 이름으로 업무가 증식합니다.",
+    adminFeatureHelp: "전체 집계를 여는 스위치입니다. 숫자는 거짓말을 안 하지만 표정은 어두워질 수 있습니다.",
+    startupHelp: "컴퓨터가 켜질 때 같이 출근합니다. 프로그램만큼은 지각하지 않겠다는 선언입니다.",
+    storageHelp: "지금 설정대로라면 기록이 여기로 갑니다. 내 퇴근의 묘비명이 될 폴더입니다.",
+    backupHelp: "실수했을 때 돌아갈 수 있는 장치입니다. 인생에는 없지만 파일에는 있습니다.",
+    adminHelp: "누구의 기록을 모을지 고릅니다. 체크박스 하나에 책임감이 같이 딸려옵니다.",
+    attendanceFolderHelp: "출퇴근 기록을 읽어 야근일지 누락을 잡습니다. 퇴근은 찍혔는데 일지는 없을 때, 앱이 조용히 눈치를 줍니다.",
+    lateThresholdHelp: "이 시간 이후 퇴근이면 확인 필요로 봅니다. 기준선은 숫자지만 마음은 이미 퇴근했습니다.",
+    overtimeStartHelp: "야근 시간을 계산할 시작점입니다. 공식적으로 피곤해지는 시각을 정합니다.",
+    hideOldIssuesHelp: "지난달 알림을 숨깁니다. 과거는 덮고 이번 달만 버텨봅니다.",
+    ignoreMissingCheckInHelp: "출근 기록이 없어도 넘어갑니다. 분명 출근은 했는데 기록만 사회적 거리두기 중일 수 있습니다.",
+    ignoreMissingCheckOutHelp: "퇴근 기록이 없어도 넘어갑니다. 기록상으론 아직 회사에 있지만, 마음만은 집에 있습니다.",
+    attendanceEmpty: "등록된 출퇴근 기록 폴더가 없습니다. 증거가 없으면 야근도 없다는 아주 낙관적인 상태입니다.",
+    employeeRootMissing: "데이터 루트 폴더부터 선택하세요. 본진 없이 수집을 시작하면 다 같이 헤맵니다.",
+    employeeEmpty: "루트 안에 직원 폴더가 없습니다. 아직 아무도 이 세계관에 배정되지 않았습니다.",
+    quickDateHelp: "날짜를 누르면 이름과 시간이 자동 입력됩니다. 오늘도 손목은 소중하니까요.",
+    quickAttendanceHelp: "퇴근 기록은 있는데 일지가 없는 날을 찾습니다. 기억은 흐려져도 로그는 선명합니다.",
+    proxyStatusIdle: "직원 이름 아래에 야근일지를 적으면 직원별 폴더로 갑니다. 업무 분신술의 기본 자세입니다.",
+    proxyStatusOn: "대리 입력 모드: 여러 사람의 야근을 한 화면에 모읍니다. 엑셀보다 조용하지만 무게는 비슷합니다.",
+    taskChipsHelp: "자주 나온 과업명을 누릅니다. 반복 업무도 이름을 붙이면 조금 덜 억울합니다.",
+    recentWorkHelp: "예전에 적은 문장을 다시 씁니다. 사람은 지쳐도 복붙은 지치지 않습니다.",
+    attendanceSuggestionInitial: "출퇴근 폴더를 등록하면 늦은 퇴근을 확인합니다. 야근의 CCTV 같은 코너입니다.",
+    attendanceSuggestionNone: "출퇴근 기준으로 걸리는 항목이 없습니다. 오늘은 시스템도 조용히 넘어가줍니다.",
+    attendanceSuggestionIssue: "내 현황 달력에서 노란 날짜를 보세요. 노란색이 이렇게 무거울 일인가요.",
+    quickDateActionHelp: "날짜 선택: 달력에서 날짜와 기본 시간을 넣습니다. 손으로 치는 야근은 하나라도 줄입니다.",
+    quickParseActionHelp: "작성 내용 확인: 날짜, 시간, 업무로 쪼갭니다. 문장도 야근하면 분해됩니다.",
+    quickSaveActionHelp: "저장: 웹하드 폴더에 기록을 남깁니다. 오늘의 고생이 파일명으로 승화됩니다.",
+    previewEmpty: "입력 내용을 붙여넣고 확인을 누르세요. 앱은 준비됐고, 마음은 아직 협의 중입니다.",
+    previewNoParsed: "확인된 작성 내용이 없습니다. 일지가 비었거나 영혼이 먼저 퇴근했습니다.",
+    previewCleared: "입력 내용을 붙여넣고 작성 내용 확인을 누르세요. 방금 전 일은 없던 일로 하겠습니다.",
+    todayAddedHelp: "오늘 저장한 기록을 바로 복사합니다. 같은 말을 두 번 하지 않기 위한 작은 저항입니다.",
+    todayAddedEmpty: "오늘 추가한 기록이 없습니다. 아직 깨끗한 하루처럼 보입니다. 아직은요.",
+    taskChipsEmpty: "저장된 기록이 생기면 과업명이 표시됩니다. 데이터가 쌓이면 패턴도 쌓이고 한숨도 쌓입니다.",
+    recentWorkEmpty: "최근 업무내용이 아직 없습니다. 이 고요함을 조금만 더 즐기세요.",
+    calendarLegendEntry: "기록 있음",
+    calendarLegendIssue: "확인 필요, 마음의 노란불",
+    calendarLegendSelected: "선택한 날짜, 오늘의 추궁 대상",
+    myIssueCard: "퇴근 기록은 있는데 야근일지가 없습니다. 몸은 회사에 있었고 문서는 집에 갔습니다.",
+    myMonthEmpty: "이번 달 기록이 없습니다. 비어 있는 표가 이렇게 평화로울 수가.",
+    limitOk: "회사 제한시간 기준 초과 항목이 없습니다. 기준상으로는 멀쩡합니다. 기준상으로는요.",
+    wageNote: "식비 기준은 회사 기준 확정 전이라 빠졌습니다. 밥값까지 계산하면 마음이 복잡해집니다.",
+    mySelectedDayEmpty: "달력에서 날짜를 선택하세요. 과거를 클릭하면 기록이 대답합니다.",
+    mySelectedDayNoEntries: "이 날짜에는 기록이 없습니다. 적어도 파일상으로는 퇴근이 평온했습니다.",
+    employeeNoSelection: "표시할 직원이 없습니다. 모두가 자유로운 건 아니고, 아직 수집을 안 한 겁니다.",
+    employeeIssueCard: "확인 필요",
+    employeeMonthEmpty: "이번 달 직원 기록이 없습니다. 조용한 표 뒤에 설정 문제가 숨어 있을 수도 있습니다.",
+    employeeSelectedDayEmpty: "직원 달력에서 날짜를 선택하세요. 남의 야근도 클릭하면 꽤 선명합니다.",
+    employeeSelectedDayNoEntries: "이 날짜에는 직원 기록이 없습니다. 기록만 보면 아주 평화로운 날입니다.",
+    adminSummaryEmpty: "수집된 기록이 없습니다. 집계표가 비면 마음도 비어야 하는데 왜 불안할까요.",
+    adminIssuesEmpty: "출퇴근 기준 확인 필요 항목이 없습니다. 오늘은 앱이 조용히 퇴근 도장을 찍었습니다.",
+    adminIssueCard: "확인 필요",
+    adminSelectedDayEmpty: "전체 달력에서 날짜를 선택하세요. 조직의 야근을 한 칸씩 열어봅니다.",
+    adminSelectedDayNoEntries: "이 날짜에는 수집된 기록이 없습니다. 전체 집계도 가끔은 침묵합니다.",
+    adminRawEmpty: "수집된 원본 기록이 없습니다. 원본이 없으면 집계도 명상에 들어갑니다.",
+    adminTrashEmpty: "휴지통이 비어 있습니다. 삭제된 기록마저 없는 드문 청정 구역입니다.",
+    approvalHelp: "체크해서 결재 올림 처리하고 완료 목록과 비교합니다. 서류와 현실의 화해 시도입니다.",
+    approvalCompareEmpty: "비교 결과가 없습니다. 붙여넣은 목록과 앱이 서로 모른 척하는 중입니다.",
+    approvalProcessed: "처리했습니다. 결재라는 이름의 작은 의식을 마쳤습니다.",
+    proxyCheckEmpty: "수집 폴더 직원 기준 확인 필요 항목이 없습니다. 모두 퇴근했거나, 아직 들키지 않았거나.",
+    proxyDraftEmpty: "어제 기준으로 대리 입력할 확인 필요 기록이 없습니다. 어제의 내가 의외로 잘 버텼습니다."
+  };
 
   const state = {
     settings: {
@@ -40,7 +111,8 @@
     adminSelectedDate: "",
     employeeSelectedDate: "",
     editContext: null,
-    activeTab: "quick"
+    activeTab: "quick",
+    secretMode: false
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -61,6 +133,86 @@
     const node = $("#appStatus");
     node.textContent = message;
     node.dataset.tone = tone || "";
+  }
+
+  function settingCopy(key, normalText) {
+    return state.secretMode && secretCopy[key] ? secretCopy[key] : normalText;
+  }
+
+  function emptyMarkup(key, normalText, compact = false) {
+    return `<div class="empty${compact ? " compact" : ""}">${escapeHtml(settingCopy(key, normalText))}</div>`;
+  }
+
+  function storeSecretMode(enabled) {
+    try {
+      if (enabled) localStorage.setItem(secretModeStorageKey, "on");
+      else localStorage.removeItem(secretModeStorageKey);
+    } catch (_error) {
+      // 로컬 저장소를 못 써도 현재 화면에서는 비밀모드가 동작하게 둡니다.
+    }
+  }
+
+  function restoreSecretMode() {
+    try {
+      state.secretMode = localStorage.getItem(secretModeStorageKey) === "on";
+    } catch (_error) {
+      state.secretMode = false;
+    }
+    applySecretModeCopy();
+  }
+
+  function applySecretModeCopy() {
+    document.documentElement.dataset.secretMode = state.secretMode ? "on" : "off";
+    $$("[data-secret-copy]").forEach((node) => {
+      const key = node.dataset.secretCopy || "";
+      if (node.dataset.normalHtml === undefined) {
+        node.dataset.normalHtml = node.innerHTML;
+      }
+      if (state.secretMode && secretCopy[key]) {
+        node.textContent = secretCopy[key];
+      } else {
+        node.innerHTML = node.dataset.normalHtml;
+      }
+    });
+    const button = $("#secretModeButton");
+    if (button) {
+      button.classList.toggle("active", state.secretMode);
+      button.setAttribute("aria-pressed", state.secretMode ? "true" : "false");
+      button.textContent = state.secretMode ? "현실모드 복귀" : "힘들때 웃는자가";
+    }
+  }
+
+  function refreshSecretModeCopy() {
+    applySecretModeCopy();
+    renderEmployeePicker();
+    renderFolderList("attendance");
+    renderSuggestionPane();
+    renderProxyCheckList();
+    renderQuickHelpers();
+    renderTodayAdded();
+    renderMine();
+    renderEmployeeStatus();
+    renderAdmin();
+  }
+
+  function toggleSecretMode() {
+    if (state.secretMode) {
+      state.secretMode = false;
+      storeSecretMode(false);
+      refreshSecretModeCopy();
+      setStatus("비밀모드 해제", "ok");
+      return;
+    }
+    const password = window.prompt("비밀번호를 입력하세요.");
+    if (password === null) return;
+    if (password.trim() === secretModePassword) {
+      state.secretMode = true;
+      storeSecretMode(true);
+      refreshSecretModeCopy();
+      setStatus("비밀모드 ON: 웃으면 일류", "ok");
+      return;
+    }
+    setStatus("비밀번호가 맞지 않습니다.", "warn");
   }
 
   async function request(path, body, method) {
@@ -346,7 +498,7 @@
   function renderFolderList(kind) {
     const folders = attendanceFolders();
     const node = $("#attendanceFolderList");
-    const emptyText = "등록된 출퇴근 기록 폴더가 없습니다.";
+    const emptyText = settingCopy("attendanceEmpty", "등록된 출퇴근 기록 폴더가 없습니다.");
     node.innerHTML = folders.length ? folders.map((folder, index) => `
       <div class="folder-item">
         <span>${escapeHtml(folder)}</span>
@@ -361,11 +513,11 @@
     const employees = Array.isArray(state.settings.dataRootEmployees) ? state.settings.dataRootEmployees : [];
     const selected = new Set(selectedEmployees().map((name) => normalizeNameKey(name)));
     if (!state.settings.dataRoot) {
-      node.innerHTML = '<div class="empty compact">데이터 루트 폴더를 먼저 선택하세요.</div>';
+      node.innerHTML = `<div class="empty compact">${escapeHtml(settingCopy("employeeRootMissing", "데이터 루트 폴더를 먼저 선택하세요."))}</div>`;
       return;
     }
     if (!employees.length) {
-      node.innerHTML = '<div class="empty compact">루트 안에 직원 폴더가 없습니다.</div>';
+      node.innerHTML = `<div class="empty compact">${escapeHtml(settingCopy("employeeEmpty", "루트 안에 직원 폴더가 없습니다."))}</div>`;
       return;
     }
     node.innerHTML = employees.map((employee) => {
@@ -602,7 +754,7 @@
     state.parseErrors = [];
     $("#saveParsedButton").disabled = true;
     $("#previewCount").textContent = "0건";
-    $("#previewPane").innerHTML = '<div class="empty">입력 내용을 붙여넣고 작성 내용 확인을 누르세요.</div>';
+    $("#previewPane").innerHTML = emptyMarkup("previewCleared", "입력 내용을 붙여넣고 작성 내용 확인을 누르세요.");
     setStatus("작성 내용을 초기화했습니다.", "ok");
   }
 
@@ -637,7 +789,7 @@
     ` : "";
 
     if (!rows && !errors) {
-      $("#previewPane").innerHTML = '<div class="empty">확인된 작성 내용이 없습니다.</div>';
+      $("#previewPane").innerHTML = emptyMarkup("previewNoParsed", "확인된 작성 내용이 없습니다.");
       return;
     }
     $("#previewPane").innerHTML = `
@@ -669,7 +821,7 @@
     ` : "";
 
     if (!rows && !errors) {
-      $("#previewPane").innerHTML = '<div class="empty">확인된 작성 내용이 없습니다.</div>';
+      $("#previewPane").innerHTML = emptyMarkup("previewNoParsed", "확인된 작성 내용이 없습니다.");
       return;
     }
     const headers = isProxy
@@ -699,9 +851,9 @@
       state.parseErrors = [];
       $("#quickText").value = "";
       $("#saveParsedButton").disabled = true;
-      $("#previewPane").innerHTML = `<div class="empty">대리 입력 ${payload.count || 0}건을 저장했습니다.</div>`;
+      $("#previewPane").innerHTML = `<div class="empty">${escapeHtml(state.secretMode ? `대리 입력 ${payload.count || 0}건 저장. 남의 야근까지 접수 완료입니다.` : `대리 입력 ${payload.count || 0}건을 저장했습니다.`)}</div>`;
       $("#previewCount").textContent = "0건";
-      $("#proxyStatus").textContent = `대리 입력 저장 ${payload.count || 0}건`;
+      $("#proxyStatus").textContent = state.secretMode ? `대리 입력 저장 ${payload.count || 0}건, 업무 분신술 완료` : `대리 입력 저장 ${payload.count || 0}건`;
       setStatus(`대리 입력 ${payload.count || 0}건 저장`, payload.warnings?.length ? "warn" : "ok");
       if (collectFolders().length) await collectAdmin();
     } catch (error) {
@@ -732,7 +884,7 @@
       state.parseErrors = [];
       $("#quickText").value = "";
       $("#saveParsedButton").disabled = true;
-      $("#previewPane").innerHTML = `<div class="empty">${payload.count}건을 저장했습니다.</div>`;
+      $("#previewPane").innerHTML = `<div class="empty">${escapeHtml(state.secretMode ? `${payload.count}건 저장. 오늘의 고생이 파일로 굳었습니다.` : `${payload.count}건을 저장했습니다.`)}</div>`;
       $("#previewCount").textContent = "0건";
       setStatus(`${payload.count}건 저장`, "ok");
       await loadMine();
@@ -801,7 +953,7 @@
         <div class="suggestion-card">
           <div>
             <strong>어제 퇴근 ${escapeHtml(item.roundedCheckOut || item.lastCheckOut)}</strong>
-            <span>${escapeHtml(item.date)} 야근일지가 없습니다.</span>
+            <span>${escapeHtml(state.secretMode ? `${item.date} 일지는 아직 출근 전입니다.` : `${item.date} 야근일지가 없습니다.`)}</span>
           </div>
           <button class="button warning-action small" type="button" data-use-suggestion="${escapeHtml(item.date)}">시간 넣기</button>
         </div>
@@ -813,13 +965,13 @@
         <div class="suggestion-card muted">
           <div>
             <strong>확인 필요 ${issues.length}건</strong>
-            <span>내 현황 달력에서 노란 날짜를 확인하세요.</span>
+            <span>${escapeHtml(settingCopy("attendanceSuggestionIssue", "내 현황 달력에서 노란 날짜를 확인하세요."))}</span>
           </div>
         </div>
       `;
       return;
     }
-    $("#attendanceSuggestionPane").innerHTML = '<div class="empty compact">출퇴근 기록 기준으로 확인할 항목이 없습니다.</div>';
+    $("#attendanceSuggestionPane").innerHTML = emptyMarkup("attendanceSuggestionNone", "출퇴근 기록 기준으로 확인할 항목이 없습니다.", true);
   }
 
   function useSuggestion(dateValue) {
@@ -872,7 +1024,7 @@
       .sort(proxyIssueSort)
       .slice(0, 120);
     if (!issues.length) {
-      $("#proxyCheckList").innerHTML = '<div class="empty compact">수집 폴더 직원 기준 확인 필요 항목이 없습니다.</div>';
+      $("#proxyCheckList").innerHTML = emptyMarkup("proxyCheckEmpty", "수집 폴더 직원 기준 확인 필요 항목이 없습니다.", true);
       return;
     }
     $("#proxyCheckList").innerHTML = issues.map((issue, index) => `
@@ -912,7 +1064,7 @@
         options: attendanceOptions()
       });
       if (!payload.text) {
-        $("#proxyStatus").textContent = "어제 기준으로 대리 입력할 확인 필요 기록이 없습니다.";
+        $("#proxyStatus").textContent = settingCopy("proxyDraftEmpty", "어제 기준으로 대리 입력할 확인 필요 기록이 없습니다.");
         setStatus("대리 초안 없음", "ok");
         return;
       }
@@ -965,12 +1117,12 @@
     renderChips(
       $("#taskChips"),
       uniqueRecent(sorted.map((entry) => deriveTaskName(entry.work)), 10),
-      "저장된 기록이 생기면 과업명이 표시됩니다."
+      settingCopy("taskChipsEmpty", "저장된 기록이 생기면 과업명이 표시됩니다.")
     );
     renderChips(
       $("#recentWorkChips"),
       uniqueRecent(sorted.map((entry) => entry.work), 10),
-      "최근 업무내용이 아직 없습니다."
+      settingCopy("recentWorkEmpty", "최근 업무내용이 아직 없습니다.")
     );
   }
 
@@ -983,7 +1135,7 @@
       .sort((a, b) => String(b.createdAt || b.updatedAt || "").localeCompare(String(a.createdAt || a.updatedAt || "")))
       .slice(0, 8);
     if (!entries.length) {
-      node.innerHTML = '<div class="empty compact">오늘 추가한 기록이 없습니다.</div>';
+      node.innerHTML = emptyMarkup("todayAddedEmpty", "오늘 추가한 기록이 없습니다.", true);
       return;
     }
     node.innerHTML = entries.map((entry) => `
@@ -1065,7 +1217,7 @@
     const issues = visibleIssues(state.attendanceReport.issues || [], month).sort(compareIssuesByDateRankNameTime);
     renderSummaryCards($("#mySummaryCards"), entries, "mine");
     $("#myIssueStrip").innerHTML = issues.length
-      ? `<div class="issue-card">${month} 확인 필요 ${issues.length}건. 퇴근 기록은 있는데 야근일지가 없는 날짜가 있습니다.</div>`
+      ? `<div class="issue-card">${escapeHtml(`${month} 확인 필요 ${issues.length}건. ${settingCopy("myIssueCard", "퇴근 기록은 있는데 야근일지가 없는 날짜가 있습니다.")}`)}</div>`
       : "";
     renderLimitAlerts($("#myLimitAlerts"), entries, month);
     renderWageSummary(entries);
@@ -1073,7 +1225,7 @@
     renderMyCalendar();
     $("#myEntriesTable").innerHTML = entries.length
       ? entriesTable(entries, { editable: true, deletable: true, source: "mine" })
-      : '<div class="empty">이번 달 기록이 없습니다.</div>';
+      : emptyMarkup("myMonthEmpty", "이번 달 기록이 없습니다.");
   }
 
   function weekStartKey(dateValue) {
@@ -1156,7 +1308,7 @@
           </div>
         `).join("")}
       </div>
-    ` : '<div class="limit-ok">회사 제한시간 기준 초과 항목이 없습니다.</div>';
+    ` : `<div class="limit-ok">${escapeHtml(settingCopy("limitOk", "회사 제한시간 기준 초과 항목이 없습니다."))}</div>`;
   }
 
   function renderWageSummary(entries) {
@@ -1168,7 +1320,7 @@
       <div><span>하루 3시간 적용</span><strong>${escapeHtml(formatHours(paid.dailyCappedMinutes))}</strong></div>
       <div><span>주 12시간 / 월 20시간 적용</span><strong>${escapeHtml(formatHours(paid.monthlyPaidMinutes))}</strong></div>
       <div><span>예상 수당</span><strong>${escapeHtml(formatMoney(estimate))}</strong></div>
-      <small>식비 기준은 회사 기준 확정 전이라 참고 계산에서 제외했습니다.</small>
+      <small>${escapeHtml(settingCopy("wageNote", "식비 기준은 회사 기준 확정 전이라 참고 계산에서 제외했습니다."))}</small>
     `;
   }
 
@@ -1280,7 +1432,7 @@
 
   function renderAdminEntriesByWeek(entries, month) {
     if (!entries.length) {
-      return '<div class="empty">수집된 원본 기록이 없습니다.</div>';
+      return emptyMarkup("adminRawEmpty", "수집된 원본 기록이 없습니다.");
     }
     const options = {
       selectable: true,
@@ -1548,7 +1700,7 @@
   function renderSelectedDay() {
     if (!state.selectedDate) {
       $("#selectedDayTitle").textContent = "날짜 선택";
-      $("#selectedDayEntries").innerHTML = '<div class="empty">달력에서 날짜를 선택하세요.</div>';
+      $("#selectedDayEntries").innerHTML = emptyMarkup("mySelectedDayEmpty", "달력에서 날짜를 선택하세요.");
       return;
     }
     const entries = state.myEntries
@@ -1578,7 +1730,7 @@
     `).join("");
     $("#selectedDayEntries").innerHTML = issueMarkup || entryMarkup
       ? `${issueMarkup}${entryMarkup}`
-      : '<div class="empty">이 날짜에는 기록이 없습니다.</div>';
+      : emptyMarkup("mySelectedDayNoEntries", "이 날짜에는 기록이 없습니다.");
   }
 
   async function copyToClipboard(text) {
@@ -1667,7 +1819,7 @@
       .sort(compareIssuesByDateRankNameTime);
     if (!selected) {
       $("#employeeSummaryCards").innerHTML = "";
-      $("#employeeIssueStrip").innerHTML = '<div class="empty compact">표시할 직원이 없습니다.</div>';
+      $("#employeeIssueStrip").innerHTML = emptyMarkup("employeeNoSelection", "표시할 직원이 없습니다.", true);
       $("#employeeLimitAlerts").innerHTML = "";
       $("#employeeWeeklySummary").innerHTML = "";
       $("#employeeEntriesTable").innerHTML = "";
@@ -1676,14 +1828,14 @@
     }
     renderSummaryCards($("#employeeSummaryCards"), monthEntries, "mine");
     $("#employeeIssueStrip").innerHTML = issues.length
-      ? `<div class="issue-card">${selected} · ${month} 확인 필요 ${issues.length}건</div>`
+      ? `<div class="issue-card">${escapeHtml(`${selected} · ${month} ${settingCopy("employeeIssueCard", "확인 필요")} ${issues.length}건`)}</div>`
       : "";
     renderLimitAlerts($("#employeeLimitAlerts"), monthEntries, month);
     renderWeeklySummary($("#employeeWeeklySummary"), monthEntries, month);
     renderEmployeeCalendar(entries, issues);
     $("#employeeEntriesTable").innerHTML = monthEntries.length
       ? entriesTable(monthEntries, { approvalActions: true, editable: true, deletable: true, source: "admin", showRank: true })
-      : '<div class="empty">이번 달 직원 기록이 없습니다.</div>';
+      : emptyMarkup("employeeMonthEmpty", "이번 달 직원 기록이 없습니다.");
   }
 
   function renderEmployeeCalendar(entries, issues) {
@@ -1703,7 +1855,7 @@
   function renderEmployeeSelectedDay(entries, issues) {
     if (!state.employeeSelectedDate) {
       $("#employeeSelectedDayTitle").textContent = "날짜 선택";
-      $("#employeeSelectedDayEntries").innerHTML = '<div class="empty">직원 달력에서 날짜를 선택하세요.</div>';
+      $("#employeeSelectedDayEntries").innerHTML = emptyMarkup("employeeSelectedDayEmpty", "직원 달력에서 날짜를 선택하세요.");
       return;
     }
     const dayEntries = entries
@@ -1733,7 +1885,7 @@
     `).join("");
     $("#employeeSelectedDayEntries").innerHTML = issueMarkup || entryMarkup
       ? `${issueMarkup}${entryMarkup}`
-      : '<div class="empty">이 날짜에는 직원 기록이 없습니다.</div>';
+      : emptyMarkup("employeeSelectedDayNoEntries", "이 날짜에는 직원 기록이 없습니다.");
   }
 
   function adminEmployeeNames() {
@@ -1827,7 +1979,7 @@
       </div>
     ` : "";
     if (!state.adminTrash.length) {
-      table.innerHTML = `<div class="empty compact">휴지통이 비어 있습니다.</div>${warningMarkup}`;
+      table.innerHTML = `${emptyMarkup("adminTrashEmpty", "휴지통이 비어 있습니다.", true)}${warningMarkup}`;
       return;
     }
     const rows = state.adminTrash.map((item, index) => `
@@ -1896,7 +2048,7 @@
     try {
       const payload = await request(action === "cancel" ? "/api/approval/cancel" : "/api/approval/submit", { entries });
       const label = action === "cancel" ? "결재 올림 취소" : "결재 올림";
-      $("#approvalResult").innerHTML = `<div class="issue-card">${label} ${payload.updatedCount || 0}건 처리했습니다.</div>`;
+      $("#approvalResult").innerHTML = `<div class="issue-card">${escapeHtml(state.secretMode ? `${label} ${payload.updatedCount || 0}건. ${secretCopy.approvalProcessed}` : `${label} ${payload.updatedCount || 0}건 처리했습니다.`)}</div>`;
       state.selectedApprovalIds.clear();
       await collectAdmin();
       setStatus(`${label} ${payload.updatedCount || 0}건`, "ok");
@@ -1951,7 +2103,7 @@
         <div class="summary-card"><span>일지 누락</span><strong>${payload.missingJournalCount || 0}건</strong></div>
         <div class="summary-card"><span>결재 누락</span><strong>${payload.approvalMissingCount || 0}건</strong></div>
       </div>
-      ${rows.length ? tableMarkup(rows.join(""), ["상태", "직급", "이름", "날짜", "결재 시간", "비교"]) : '<div class="empty compact">비교 결과가 없습니다.</div>'}
+      ${rows.length ? tableMarkup(rows.join(""), ["상태", "직급", "이름", "날짜", "결재 시간", "비교"]) : emptyMarkup("approvalCompareEmpty", "비교 결과가 없습니다.", true)}
       ${errorMarkup}
     `;
   }
@@ -2027,7 +2179,7 @@
     ` : "";
     $("#adminSummaryTable").innerHTML = summaryRows
       ? `${tableMarkup(summaryRows, ["직급", "이름", "총 시간", "일수", "기록"])}${warningMarkup}`
-      : `<div class="empty">수집된 기록이 없습니다.</div>${warningMarkup}`;
+      : `${emptyMarkup("adminSummaryEmpty", "수집된 기록이 없습니다.")}${warningMarkup}`;
     $("#adminEntriesTable").innerHTML = renderAdminEntriesByWeek(entries, month);
     renderAdminCalendar();
     renderAdminTrash();
@@ -2035,7 +2187,7 @@
 
   function renderAdminIssues(issues) {
     if (!issues.length) {
-      $("#adminIssuesTable").innerHTML = '<div class="empty compact">출퇴근 기록 기준 확인 필요 항목이 없습니다.</div>';
+      $("#adminIssuesTable").innerHTML = emptyMarkup("adminIssuesEmpty", "출퇴근 기록 기준 확인 필요 항목이 없습니다.", true);
       return;
     }
     const rows = issues.map((issue) => `
@@ -2049,7 +2201,7 @@
       </tr>
     `).join("");
     $("#adminIssuesTable").innerHTML = `
-      <div class="issue-card">확인 필요 ${issues.length}건</div>
+      <div class="issue-card">${escapeHtml(`${settingCopy("adminIssueCard", "확인 필요")} ${issues.length}건`)}</div>
       ${tableMarkup(rows, ["날짜", "직급", "이름", "출근", "퇴근", "내용"])}
     `;
   }
@@ -2071,7 +2223,7 @@
   function renderAdminSelectedDay() {
     if (!state.adminSelectedDate) {
       $("#adminSelectedDayTitle").textContent = "날짜 선택";
-      $("#adminSelectedDayEntries").innerHTML = '<div class="empty">전체 달력에서 날짜를 선택하세요.</div>';
+      $("#adminSelectedDayEntries").innerHTML = emptyMarkup("adminSelectedDayEmpty", "전체 달력에서 날짜를 선택하세요.");
       return;
     }
     const entries = state.adminEntries
@@ -2107,7 +2259,7 @@
     `).join("");
     $("#adminSelectedDayEntries").innerHTML = issueMarkup || entryMarkup
       ? `${issueMarkup}${entryMarkup}`
-      : '<div class="empty">이 날짜에는 수집된 기록이 없습니다.</div>';
+      : emptyMarkup("adminSelectedDayNoEntries", "이 날짜에는 수집된 기록이 없습니다.");
   }
 
   function exportCsv() {
@@ -2198,6 +2350,7 @@
     $("#restoreMyBackupButton").addEventListener("click", restoreMyBackup);
     $("#refreshEmployeesButton").addEventListener("click", refreshDataRootEmployees);
     $("#addAttendanceFolder").addEventListener("click", () => addFolder("attendance"));
+    $("#secretModeButton").addEventListener("click", toggleSecretMode);
     $("#themeMode").addEventListener("change", () => {
       applyTheme($("#themeMode").value);
       state.settings.theme = normalizedTheme($("#themeMode").value);
@@ -2226,10 +2379,10 @@
       state.parseErrors = [];
       $("#saveParsedButton").disabled = true;
       $("#previewCount").textContent = "0건";
-      $("#previewPane").innerHTML = '<div class="empty">입력 내용을 붙여넣고 작성 내용 확인을 누르세요.</div>';
+      $("#previewPane").innerHTML = emptyMarkup("previewEmpty", "입력 내용을 붙여넣고 작성 내용 확인을 누르세요.");
       $("#proxyStatus").textContent = proxyModeEnabled()
-        ? "대리 입력 모드: 직원 이름 줄 아래 야근일지를 적어 저장합니다."
-        : "직원 이름 줄 아래에 해당 직원 야근일지를 적으면 직원별 폴더로 저장됩니다.";
+        ? settingCopy("proxyStatusOn", "대리 입력 모드: 직원 이름 줄 아래 야근일지를 적어 저장합니다.")
+        : settingCopy("proxyStatusIdle", "직원 이름 줄 아래에 해당 직원 야근일지를 적으면 직원별 폴더로 저장됩니다.");
       renderFeatureVisibility();
       renderAdmin();
     });
@@ -2427,8 +2580,10 @@
     state.adminCalendarDate = monthToDate(todayMonth());
     state.quickCalendarDate = monthToDate(todayMonth());
     bindEvents();
+    restoreSecretMode();
     await loadSettings();
     await loadMine();
+    applySecretModeCopy();
     renderQuickCalendar();
     renderAdmin();
   }

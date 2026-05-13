@@ -25,16 +25,17 @@ KOSIS나 Local Desk를 수정할 때는 이 폴더를 기본 참고 대상으로
 Local Desk 실행.bat
 ```
 
-기본 실행은 CMD 창을 숨기고 로컬 서버를 켭니다. 브라우저에서 `http://127.0.0.1:8765`로 접속됩니다.
-오류 확인이 필요하면 왼쪽 사이드바의 `설정` 화면에서 `다음 실행부터 CMD 창 보이게 열기`를 체크한 뒤 다시 실행합니다.
+기본 실행은 CMD 창을 열고 로컬 서버를 켭니다. 브라우저에서 `http://127.0.0.1:8765`로 접속됩니다.
+브라우저 창을 닫거나 포털 안에서 페이지를 이동해도 서버는 자동 종료되지 않습니다. 종료하려면 CMD 창에서 `Ctrl+C`를 누르거나 창을 닫습니다.
 
 ## 새 PC 세팅
 
 clone 후 아래 파일은 직접 설정해야 합니다 (Git에 안 올라감):
 
 1. `apps/kosis/config.example.py` → `config.py`로 복사 후 API 키 입력
-2. `local/secrets/google-calendar-credentials.json` — Google OAuth 인증 파일 저장
-3. 달력 화면에서 '연결' 누르면 토큰 자동 생성
+2. `apps/map_capture/config.example.py` → `config.py`로 복사 후 카카오 JavaScript 키 입력 (지도 캡처를 쓸 경우에만)
+3. `local/secrets/google-calendar-credentials.json` — Google OAuth 인증 파일 저장
+4. 달력 화면에서 '연결' 누르면 토큰 자동 생성
 
 ## Git 관리
 
@@ -48,6 +49,7 @@ Local Desk의 Git 탭에서 커밋, 받기, 올리기를 할 수 있습니다.
 
 - `apps/kosis/` — KOSIS 통계 검색, 미리보기, 엑셀 내보내기
 - `apps/report_data/` — 상하수도 보고서 기초자료 후보 추천
+- `apps/map_capture/` — 카카오맵 영역 지정 + PNG 캡처
 
 ## 별도 관리 앱
 

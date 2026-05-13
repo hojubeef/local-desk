@@ -24,6 +24,18 @@ window.portalApps = [
     favorite: true
   },
   {
+    id: "map-capture",
+    name: "지도 캡처",
+    type: "page",
+    path: "./pages/map_capture.html",
+    description: "카카오맵에서 영역 지정 후 PNG 저장",
+    initials: "MC",
+    categoryId: "app-tools",
+    tags: ["지도", "캡처", "카카오맵"],
+    status: "active",
+    favorite: true
+  },
+  {
     id: "kosis-gui",
     name: "KOSIS GUI",
     type: "local",

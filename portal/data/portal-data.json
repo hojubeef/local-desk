@@ -167,6 +167,23 @@
         "initials": ""
       }
     },
+    "map-capture": {
+      "categoryId": "app-tools",
+      "tags": [
+        "지도",
+        "캡처",
+        "카카오맵"
+      ],
+      "status": "active",
+      "favorite": true,
+      "overrides": {
+        "name": "",
+        "type": "",
+        "path": "",
+        "description": "",
+        "initials": ""
+      }
+    },
     "kosis-gui": {
       "categoryId": "app-stats",
       "tags": [

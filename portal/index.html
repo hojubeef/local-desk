@@ -127,6 +127,17 @@
             <div class="mini-list" id="homeApps"></div>
           </section>
 
+          <section class="panel home-panel home-overtime-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-label">단독 앱</p>
+                <h2>근야일지</h2>
+              </div>
+            </div>
+            <button class="primary-button home-launch-button" type="button" id="homeLaunchOvertimeJournal">근야일지</button>
+            <p class="hint" id="homeOvertimeStatus">야근일지 EXE 설정 확인 전</p>
+          </section>
+
           <section class="panel home-panel">
             <div class="panel-head">
               <div>
@@ -662,15 +673,10 @@
                 <h2 id="settingsHeading">실행 설정</h2>
               </div>
             </div>
-            <label class="inline-check launcher-check">
-              <input id="showLocalDeskConsole" type="checkbox">
-              <span>다음 실행부터 CMD 창 보이게 열기</span>
-            </label>
-            <p class="hint">기본은 CMD 창을 숨기고 실행합니다. 오류 확인이 필요할 때만 체크한 뒤 Local Desk를 다시 열면 콘솔 창이 보입니다.</p>
+            <p class="hint">Local Desk는 CMD 창에서 실행됩니다. 브라우저 창을 닫거나 KOSIS 페이지로 이동해도 서버는 자동 종료되지 않습니다.</p>
             <div class="launcher-guide">
-              <p><strong>숨김 실행</strong><br><code>Local Desk 실행.vbs</code> 또는 기존 <code>Local Desk 실행.bat</code>를 사용합니다.</p>
-              <p><strong>오류 확인</strong><br>위 체크를 켠 뒤 다시 실행하면 CMD 창이 보입니다.</p>
-              <p><strong>종료</strong><br>Local Desk 홈페이지 창을 닫으면 로컬 서버도 같이 종료됩니다.</p>
+              <p><strong>실행</strong><br><code>Local Desk 실행.bat</code>를 사용합니다.</p>
+              <p><strong>종료</strong><br>CMD 창에서 <code>Ctrl+C</code>를 누르거나 창을 닫아 서버를 종료합니다.</p>
             </div>
           </section>
         </div>

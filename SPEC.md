@@ -176,7 +176,7 @@ clone 후 아래 항목을 수동으로 설정해야 함:
 - 로컬 서버: Python HTTP 서버 (`127.0.0.1:8765`)
 - 외부 라이브러리: SheetJS (엑셀), Plotly.js (차트) — CDN으로 로드
 - 동기화: Git + GitHub
-- 실행: Windows VBS/배치 파일 (`Local Desk 실행.bat` → `scripts/Local Desk 실행.vbs` → `scripts/Local Desk 실행.bat`)
+- 실행: Windows 배치 파일 (`Local Desk 실행.bat` → `scripts/Local Desk 실행.bat`)
 
 ---
 
@@ -186,5 +186,6 @@ clone 후 아래 항목을 수동으로 설정해야 함:
 |------|------|------|
 | KOSIS 통계 | `apps/kosis/` + `portal/pages/kosis.*` | KOSIS 공공 통계 조회, 피벗 테이블, 차트, 엑셀 내보내기 |
 | 보고서 기초자료 | `apps/report_data/` + `portal/pages/report_data.*` | 상하수도 보고서 기초자료 항목별 KOSIS 후보 추천, 미리보기, 선택 요약 |
+| 지도 캡처 | `apps/map_capture/` + `portal/pages/map_capture.*` | 카카오맵에서 영역 드래그 지정 후 지정 해상도의 PNG 저장 (일반/스카이뷰/하이브리드) |
 
 새 모듈을 추가하면 이 표도 갱신할 것.

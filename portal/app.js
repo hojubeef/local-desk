@@ -90,7 +90,6 @@
     localDeskSettings: {
       overtimeJournalExe: "",
       overtimeJournalExeExists: false,
-      showConsole: false,
       message: "설정 확인 전"
     },
     filters: {
@@ -548,8 +547,15 @@
         : "파일을 찾을 수 없습니다. EXE를 다시 선택해주세요."
       : "처음 한 번 EXE 파일을 선택해주세요.";
     $("#launchOvertimeJournal").disabled = !settings.overtimeJournalExeExists;
-    $("#showLocalDeskConsole").checked = Boolean(settings.showConsole);
     $("#overtimeLauncherStatus").textContent = settings.message || "대기 중";
+    const homeButton = $("#homeLaunchOvertimeJournal");
+    if (homeButton) homeButton.disabled = !settings.overtimeJournalExeExists;
+    const homeStatus = $("#homeOvertimeStatus");
+    if (homeStatus) {
+      homeStatus.textContent = settings.overtimeJournalExeExists
+        ? "설정된 야근일지를 바로 실행합니다."
+        : "야근일지 메뉴에서 EXE 파일을 먼저 선택해주세요.";
+    }
   }
 
   async function loadGitStatus() {
@@ -1968,15 +1974,7 @@
     $("#pickOvertimeExe").addEventListener("click", pickOvertimeExe);
     $("#refreshOvertimeLauncher").addEventListener("click", loadLocalDeskSettings);
     $("#launchOvertimeJournal").addEventListener("click", launchOvertimeJournal);
-    $("#showLocalDeskConsole").addEventListener("change", async (event) => {
-      try {
-        await saveLocalDeskSettings({ showConsole: event.target.checked });
-      } catch (error) {
-        state.localDeskSettings.message = error.message;
-        renderOvertimeLauncher();
-      }
-    });
-
+    $("#homeLaunchOvertimeJournal").addEventListener("click", launchOvertimeJournal);
     document.addEventListener("click", (event) => {
       const homeDateButton = event.target.closest("[data-home-date]");
       if (homeDateButton) {
