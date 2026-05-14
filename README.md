@@ -33,7 +33,7 @@ Local Desk 실행.bat
 clone 후 아래 파일은 직접 설정해야 합니다 (Git에 안 올라감):
 
 1. `apps/kosis/config.example.py` → `config.py`로 복사 후 API 키 입력
-2. `apps/map_capture/config.example.py` → `config.py`로 복사 후 카카오 JavaScript 키 입력 (지도 캡처를 쓸 경우에만)
+2. `apps/map_capture/config.example.py` → `config.py`로 복사 후 네이버 지도 API 키 입력 (지도 캡처를 쓸 경우에만)
 3. `local/secrets/google-calendar-credentials.json` — Google OAuth 인증 파일 저장
 4. 달력 화면에서 '연결' 누르면 토큰 자동 생성
 
@@ -49,7 +49,7 @@ Local Desk의 Git 탭에서 커밋, 받기, 올리기를 할 수 있습니다.
 
 - `apps/kosis/` — KOSIS 통계 검색, 미리보기, 엑셀 내보내기
 - `apps/report_data/` — 상하수도 보고서 기초자료 후보 추천
-- `apps/map_capture/` — 카카오맵 영역 지정 + PNG 캡처
+- `apps/map_capture/` — 네이버 지도 영역 지정 + 최대줌 PNG 캡처
 
 ## 별도 관리 앱
 

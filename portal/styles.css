@@ -2911,6 +2911,20 @@ button.disabled {
   color: #fde68a;
 }
 
+.mapcap-usage {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mapcap-usage-warning {
+  color: #fde68a;
+}
+
 .mapcap-field {
   display: grid;
   gap: 6px;
@@ -2929,6 +2943,116 @@ button.disabled {
   flex-wrap: wrap;
 }
 
+.mapcap-search-results {
+  display: grid;
+  gap: 6px;
+  max-height: 270px;
+  overflow: auto;
+}
+
+.mapcap-search-results[hidden] {
+  display: none;
+}
+
+.mapcap-search-note,
+.mapcap-search-empty {
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #111215;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mapcap-search-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mapcap-search-result:hover {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: #17191d;
+}
+
+.mapcap-result-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mapcap-result-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mapcap-result-main strong,
+.mapcap-result-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mapcap-result-main strong {
+  font-size: 13px;
+}
+
+.mapcap-result-main small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.mapcap-marker {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  transform: rotate(-45deg);
+  font-family: inherit;
+  line-height: 1;
+  text-align: center;
+}
+
+.mapcap-marker span {
+  transform: rotate(45deg);
+}
+
+.mapcap-info-window {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  color: #f8fafc;
+  font-size: 12px;
+}
+
+.mapcap-info-window span {
+  color: #cbd5e1;
+}
+
 .mapcap-res-row input[type="number"] {
   width: 96px;
 }
@@ -2945,8 +3069,10 @@ button.disabled {
 }
 
 .mapcap-radio {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   padding: 5px 9px;
   border: 1px solid var(--line);
@@ -2955,6 +3081,19 @@ button.disabled {
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
+}
+
+.mapcap-radio input,
+.mapcap-tool-radio input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mapcap-radio:has(input:checked) {
+  border-color: rgba(125, 211, 252, 0.52);
+  background: rgba(56, 189, 248, 0.16);
+  color: #e0f2fe;
 }
 
 .mapcap-check {
@@ -2986,9 +3125,71 @@ button.disabled {
   height: 100%;
 }
 
+.mapcap-map-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 8;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.mapcap-tool-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(17, 18, 21, 0.86);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  pointer-events: auto;
+}
+
+.mapcap-tool-radio,
+.mapcap-map-button {
+  position: relative;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #f8fafc;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 30px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mapcap-tool-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mapcap-tool-radio:has(input:checked),
+.mapcap-map-button:hover {
+  border-color: rgba(125, 211, 252, 0.38);
+  background: rgba(56, 189, 248, 0.16);
+  color: #e0f2fe;
+}
+
+.mapcap-map-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .mapcap-overlay {
   position: absolute;
   inset: 0;
+  z-index: 5;
   pointer-events: none;
   cursor: default;
 }
@@ -2996,6 +3197,122 @@ button.disabled {
 .mapcap-overlay.mapcap-overlay-active {
   pointer-events: auto;
   cursor: crosshair;
+}
+
+.mapcap-overlay.mapcap-overlay-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mapcap-area-info {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #111215;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mapcap-map-wrap > .mapcap-area-info {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 8;
+  max-width: min(720px, calc(100% - 24px));
+  margin-top: 0;
+  background: rgba(17, 18, 21, 0.9);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.mapcap-area-info[data-level="warn"] {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: rgba(146, 64, 14, 0.82);
+  color: #fef3c7;
+}
+
+.mapcap-area-info[data-level="error"] {
+  border-color: rgba(248, 113, 113, 0.48);
+  background: rgba(127, 29, 29, 0.86);
+  color: #fecaca;
+}
+
+.mapcap-capture-log {
+  display: grid;
+  gap: 6px;
+  max-height: 230px;
+  overflow: auto;
+}
+
+.mapcap-capture-log[hidden] {
+  display: none;
+}
+
+.mapcap-log-item {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mapcap-log-item:hover {
+  border-color: rgba(34, 197, 94, 0.48);
+  background: #17191d;
+}
+
+.mapcap-log-item strong {
+  font-size: 12px;
+}
+
+.mapcap-log-item span,
+.mapcap-log-item small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mapcap-quality-row label {
+  flex: 1 1 0;
+  min-width: 82px;
+  min-height: 38px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.mapcap-progress {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.mapcap-progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #1f2024;
+  overflow: hidden;
+}
+
+.mapcap-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #38bdf8, #22c55e);
+  transition: width 0.2s ease;
+}
+
+.mapcap-progress small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 @media (max-width: 980px) {

@@ -6,11 +6,23 @@
 # config.py is excluded from Git via .gitignore.
 # ============================================================
 
-# Kakao Developers > 내 애플리케이션 > 앱 키 > JavaScript 키
-# https://developers.kakao.com
-# 플랫폼 등록에 http://127.0.0.1:8765 를 반드시 추가해야 합니다.
-KAKAO_JS_KEY = ""
-
-# (예비) 네이버 클라우드 플랫폼 - Maps - Web Dynamic Map
-# 사용하지 않으면 빈 값으로 두면 됩니다.
+# NAVER Cloud Platform > Services > Maps > Application
+# Use the Application authentication values.
 NAVER_CLIENT_ID = ""
+NAVER_CLIENT_SECRET = ""
+
+# Static Map free quota is currently 3,000,000 calls/month for one
+# representative account. Change this only if your contract differs.
+NAVER_MONTHLY_LIMIT = 3_000_000
+
+# Optional: NAVER Cloud Platform account API authentication key.
+# When these are set, the app can query Cost and Usage API and show
+# NAVER-side billing/usage rows in addition to the local call counter.
+NCLOUD_ACCESS_KEY = ""
+NCLOUD_SECRET_KEY = ""
+NCLOUD_BILLING_KEYWORD = "Maps"
+
+# Optional: NAVER Developers > Search API > Local.
+# These keys are separate from NAVER Cloud Maps keys.
+NAVER_LOCAL_SEARCH_CLIENT_ID = ""
+NAVER_LOCAL_SEARCH_CLIENT_SECRET = ""

@@ -4,9 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>지도 캡처 - Local Desk</title>
-  <link rel="stylesheet" href="../styles.css?v=20260513-map-capture">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script defer src="./map_capture.js?v=20260513-map-capture"></script>
+  <link rel="stylesheet" href="../styles.css?v=20260514-naver-static">
+  <script defer src="./map_capture.js?v=20260514-naver-static"></script>
 </head>
 <body>
   <main class="main page-main">
@@ -24,70 +23,96 @@
       <aside class="panel mapcap-controls">
         <div class="panel-head">
           <div>
-            <p class="section-label">설정</p>
-            <h2>지도 캡처</h2>
+            <p class="section-label">네이버 지도</p>
+            <h2>최대줌 영역 캡처</h2>
           </div>
         </div>
 
-        <div class="mapcap-status" id="mapcapStatus" aria-live="polite">키 확인 중...</div>
+        <div class="mapcap-status" id="mapcapStatus" aria-live="polite">설정 확인 중...</div>
+
+        <div class="mapcap-usage" id="mapcapUsage">앱 계산 사용량: 확인 중...</div>
+        <div class="mapcap-usage" id="mapcapBillingUsage">네이버 산정 사용량: 확인 중...</div>
 
         <div class="mapcap-field">
           <label for="mapcapSearchInput">위치 검색</label>
           <div class="mapcap-row">
             <input id="mapcapSearchInput" type="search" placeholder="예: 서울시청, 강남역">
             <button type="button" class="text-button" id="mapcapSearchBtn">이동</button>
+            <button type="button" class="text-button" id="mapcapClearMarkers" disabled>마커 지우기</button>
           </div>
-          <small class="field-help">키워드/주소 모두 가능. 첫 결과로 이동합니다.</small>
+          <small class="field-help" id="mapcapSearchHelp">주소는 기본 지원, 장소명은 네이버 지역 검색 키가 있으면 같이 표시됩니다.</small>
+          <div class="mapcap-search-results" id="mapcapSearchResults" hidden></div>
         </div>
 
         <div class="mapcap-field">
-          <label>뷰 타입</label>
-          <div class="mapcap-radio-row" role="radiogroup" aria-label="뷰 타입">
-            <label class="mapcap-radio"><input type="radio" name="mapcapView" value="ROADMAP" checked> 일반</label>
-            <label class="mapcap-radio"><input type="radio" name="mapcapView" value="SKYVIEW"> 스카이뷰</label>
-            <label class="mapcap-radio"><input type="radio" name="mapcapView" value="HYBRID"> 하이브리드</label>
-          </div>
+          <label>캡처 로그</label>
+          <div class="mapcap-capture-log" id="mapcapCaptureLog" hidden></div>
+          <small class="field-help">저장 성공 시 좌표가 남습니다. 항목을 누르면 해당 좌표로 다시 이동합니다.</small>
         </div>
 
         <div class="mapcap-field">
-          <label>영역 선택 모드</label>
-          <div class="mapcap-row">
-            <button type="button" class="text-button" id="mapcapSelectToggle">영역 선택 시작</button>
-            <button type="button" class="text-button" id="mapcapClearSelection" disabled>선택 해제</button>
+          <label>저장 품질</label>
+          <div class="mapcap-radio-row mapcap-quality-row" role="radiogroup" aria-label="저장 품질">
+            <label class="mapcap-radio"><input type="radio" name="mapcapQuality" value="standard"> 현재 화면</label>
+            <label class="mapcap-radio"><input type="radio" name="mapcapQuality" value="custom" checked> 직접 지정</label>
+            <label class="mapcap-radio"><input type="radio" name="mapcapQuality" value="ultra"> 최고 화질</label>
           </div>
-          <small class="field-help">드래그로 사각형 지정. <b>Shift</b>를 누르면 정사각형 고정.</small>
-        </div>
-
-        <div class="mapcap-field">
-          <label>출력 해상도</label>
           <div class="mapcap-row mapcap-res-row">
-            <input id="mapcapWidth" type="number" min="100" max="8000" value="1920" inputmode="numeric"> ×
-            <input id="mapcapHeight" type="number" min="100" max="8000" value="1080" inputmode="numeric">
+            <label>
+              <span>줌 레벨</span>
+              <input id="mapcapLevel" type="number" min="0" max="20" value="20" inputmode="numeric">
+            </label>
+            <label>
+              <span>픽셀 배율</span>
+              <select id="mapcapScale">
+                <option value="1">1x</option>
+                <option value="2" selected>2x</option>
+              </select>
+            </label>
+          </div>
+          <small class="field-help" id="mapcapQualityHelp">레벨 20이 최대 확대입니다. 2x는 같은 좌표 범위를 두 배 픽셀로 받습니다.</small>
+          <small class="field-help mapcap-usage-warning">선택 영역이 넓거나 줌 레벨/픽셀 배율이 높을수록 Static Map API 사용량이 크게 늘어납니다.</small>
+        </div>
+
+        <div class="mapcap-field">
+          <label>현재 지도 저장 크기</label>
+          <div class="mapcap-row mapcap-res-row">
+            <input id="mapcapWidth" type="number" min="100" max="16000" value="1920" inputmode="numeric"> ×
+            <input id="mapcapHeight" type="number" min="100" max="16000" value="1080" inputmode="numeric">
             <span class="mapcap-unit">px</span>
           </div>
           <label class="mapcap-check">
             <input type="checkbox" id="mapcapLockRatio">
             선택한 영역 비율로 가로/세로 자동 맞춤
           </label>
-          <label>
-            <span>고해상도 배율</span>
-            <select id="mapcapScale">
-              <option value="1">1x (표준)</option>
-              <option value="2" selected>2x (선명)</option>
-              <option value="3">3x (인쇄용)</option>
-            </select>
-          </label>
+          <small class="field-help">현재 지도 모드에서만 이 크기로 맞춥니다. 지정 레벨/최고 화질은 좌표 범위의 원본 크기로 저장합니다.</small>
         </div>
 
         <div class="mapcap-field">
           <button type="button" class="primary-button" id="mapcapExportBtn" disabled>PNG 저장</button>
+          <div class="mapcap-progress" id="mapcapProgress" hidden>
+            <div class="mapcap-progress-bar"><div class="mapcap-progress-fill" id="mapcapProgressFill"></div></div>
+            <small id="mapcapProgressText"></small>
+          </div>
           <small class="field-help" id="mapcapHint">영역을 먼저 선택해주세요.</small>
         </div>
       </aside>
 
       <section class="mapcap-stage">
         <div class="mapcap-map-wrap" id="mapcapMapWrap">
-          <div class="mapcap-map" id="mapcapMap"></div>
+          <div class="mapcap-map" id="mapcapMapNaver" data-provider="naver"></div>
+          <div class="mapcap-map-toolbar">
+            <div class="mapcap-tool-group" role="radiogroup" aria-label="뷰 타입">
+              <label class="mapcap-tool-radio"><input type="radio" name="mapcapView" value="ROADMAP" checked> 일반</label>
+              <label class="mapcap-tool-radio"><input type="radio" name="mapcapView" value="SKYVIEW"> 위성</label>
+              <label class="mapcap-tool-radio"><input type="radio" name="mapcapView" value="HYBRID"> 하이브리드</label>
+            </div>
+            <div class="mapcap-tool-group">
+              <button type="button" class="mapcap-map-button" id="mapcapSelectToggle">영역 선택</button>
+              <button type="button" class="mapcap-map-button" id="mapcapClearSelection" disabled>지우기</button>
+            </div>
+          </div>
+          <div class="mapcap-area-info" id="mapcapAreaInfo" hidden></div>
           <canvas class="mapcap-overlay" id="mapcapOverlay"></canvas>
         </div>
       </section>

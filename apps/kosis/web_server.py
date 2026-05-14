@@ -11,6 +11,7 @@ import ast
 import base64
 import datetime as dt
 import hashlib
+import hmac
 import html as html_lib
 import json
 import re
@@ -23,6 +24,7 @@ import uuid
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
@@ -32,11 +34,31 @@ except ImportError:  # pragma: no cover - old Python fallback
     ZoneInfo = None
 
 
-APP_DIR = Path(__file__).resolve().parent
-ROOT_DIR = APP_DIR.parents[1]
+if getattr(sys, "frozen", False):
+    ROOT_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    APP_DIR = ROOT_DIR / "apps" / "kosis"
+    RUNTIME_ROOT_DIR = Path(sys.executable).resolve().parent / "지도캡처_data"
+else:
+    APP_DIR = Path(__file__).resolve().parent
+    ROOT_DIR = APP_DIR.parents[1]
+    RUNTIME_ROOT_DIR = ROOT_DIR
 REPORT_DATA_DIR = ROOT_DIR / "apps" / "report_data"
 OVERTIME_DIR = ROOT_DIR / "apps" / "overtime_journal"
 MAP_CAPTURE_DIR = ROOT_DIR / "apps" / "map_capture"
+LOCAL_DIR = RUNTIME_ROOT_DIR / "local"
+MAP_CAPTURE_USAGE_PATH = LOCAL_DIR / "cache" / "map_capture_usage.json"
+NAVER_STATIC_MONTHLY_FREE_LIMIT = 3_000_000
+NAVER_STATIC_ENDPOINTS = [
+    "https://maps.apigw.ntruss.com/map-static/v2/raster",
+    "https://naveropenapi.apigw.ntruss.com/map-static/v2/raster",
+]
+NCLOUD_BILLING_ENDPOINT = "https://billingapi.apigw.ntruss.com"
+NCLOUD_BILLING_DAILY_USAGE_URI = "/billing/v1/cost/getContractUsageListByDaily"
+NAVER_GEOCODE_ENDPOINTS = [
+    "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode",
+    "https://maps.apigw.ntruss.com/map-geocode/v2/geocode",
+]
+NAVER_LOCAL_SEARCH_ENDPOINT = "https://openapi.naver.com/v1/search/local.json"
 
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
@@ -47,24 +69,484 @@ if str(OVERTIME_DIR) not in sys.path:
 
 
 def load_map_capture_config():
-    """Map Capture 모듈의 API 키를 안전하게 읽어온다.
-    config.py가 없거나 키가 비어있어도 서버가 죽지 않도록 가드.
-    """
+    """Read Map Capture API settings without exposing secret values."""
+    empty = {
+        "naverClientId": "",
+        "naverClientSecretSet": False,
+        "naverMonthlyLimit": NAVER_STATIC_MONTHLY_FREE_LIMIT,
+        "ncloudBillingKeySet": False,
+        "naverLocalSearchKeySet": False,
+    }
     try:
         import importlib.util
 
         config_path = MAP_CAPTURE_DIR / "config.py"
         if not config_path.exists():
-            return {"kakaoJsKey": "", "naverClientId": ""}
+            return empty
         spec = importlib.util.spec_from_file_location("map_capture_config", config_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        monthly_limit = getattr(module, "NAVER_MONTHLY_LIMIT", NAVER_STATIC_MONTHLY_FREE_LIMIT)
         return {
-            "kakaoJsKey": getattr(module, "KAKAO_JS_KEY", "") or "",
             "naverClientId": getattr(module, "NAVER_CLIENT_ID", "") or "",
+            "naverClientSecretSet": bool(getattr(module, "NAVER_CLIENT_SECRET", "") or ""),
+            "ncloudBillingKeySet": bool(
+                (getattr(module, "NCLOUD_ACCESS_KEY", "") or "")
+                and (getattr(module, "NCLOUD_SECRET_KEY", "") or "")
+            ),
+            "naverLocalSearchKeySet": bool(
+                (
+                    getattr(module, "NAVER_LOCAL_SEARCH_CLIENT_ID", "")
+                    or getattr(module, "NAVER_SEARCH_CLIENT_ID", "")
+                    or ""
+                )
+                and (
+                    getattr(module, "NAVER_LOCAL_SEARCH_CLIENT_SECRET", "")
+                    or getattr(module, "NAVER_SEARCH_CLIENT_SECRET", "")
+                    or ""
+                )
+            ),
+            "naverMonthlyLimit": clamp_integer(
+                monthly_limit,
+                0,
+                999_999_999,
+                NAVER_STATIC_MONTHLY_FREE_LIMIT,
+            ),
         }
     except Exception:
-        return {"kakaoJsKey": "", "naverClientId": ""}
+        return empty
+
+
+def load_map_capture_secret_config():
+    try:
+        import importlib.util
+
+        config_path = MAP_CAPTURE_DIR / "config.py"
+        if not config_path.exists():
+            return {
+                "naverClientId": "",
+                "naverClientSecret": "",
+                "ncloudAccessKey": "",
+                "ncloudSecretKey": "",
+                "ncloudBillingKeyword": "Maps",
+                "naverLocalSearchClientId": "",
+                "naverLocalSearchClientSecret": "",
+                "naverMonthlyLimit": NAVER_STATIC_MONTHLY_FREE_LIMIT,
+            }
+        spec = importlib.util.spec_from_file_location("map_capture_config_secret", config_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return {
+            "naverClientId": getattr(module, "NAVER_CLIENT_ID", "") or "",
+            "naverClientSecret": getattr(module, "NAVER_CLIENT_SECRET", "") or "",
+            "ncloudAccessKey": getattr(module, "NCLOUD_ACCESS_KEY", "") or "",
+            "ncloudSecretKey": getattr(module, "NCLOUD_SECRET_KEY", "") or "",
+            "ncloudBillingKeyword": getattr(module, "NCLOUD_BILLING_KEYWORD", "Maps") or "Maps",
+            "naverLocalSearchClientId": (
+                getattr(module, "NAVER_LOCAL_SEARCH_CLIENT_ID", "")
+                or getattr(module, "NAVER_SEARCH_CLIENT_ID", "")
+                or ""
+            ),
+            "naverLocalSearchClientSecret": (
+                getattr(module, "NAVER_LOCAL_SEARCH_CLIENT_SECRET", "")
+                or getattr(module, "NAVER_SEARCH_CLIENT_SECRET", "")
+                or ""
+            ),
+            "naverMonthlyLimit": clamp_integer(
+                getattr(module, "NAVER_MONTHLY_LIMIT", NAVER_STATIC_MONTHLY_FREE_LIMIT),
+                0,
+                999_999_999,
+                NAVER_STATIC_MONTHLY_FREE_LIMIT,
+            ),
+        }
+    except Exception:
+        return {
+            "naverClientId": "",
+            "naverClientSecret": "",
+            "ncloudAccessKey": "",
+            "ncloudSecretKey": "",
+            "ncloudBillingKeyword": "Maps",
+            "naverLocalSearchClientId": "",
+            "naverLocalSearchClientSecret": "",
+            "naverMonthlyLimit": NAVER_STATIC_MONTHLY_FREE_LIMIT,
+        }
+
+
+def clamp_number(value, minimum, maximum, fallback):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return fallback
+    return max(minimum, min(maximum, number))
+
+
+def clamp_integer(value, minimum, maximum, fallback):
+    return int(clamp_number(value, minimum, maximum, fallback))
+
+
+def current_map_capture_month():
+    if ZoneInfo is not None:
+        return dt.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m")
+    return dt.datetime.now().strftime("%Y-%m")
+
+
+def read_map_capture_usage():
+    try:
+        if MAP_CAPTURE_USAGE_PATH.exists():
+            data = json.loads(MAP_CAPTURE_USAGE_PATH.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+    return {}
+
+
+def write_map_capture_usage(data):
+    MAP_CAPTURE_USAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    write_json_file(MAP_CAPTURE_USAGE_PATH, data)
+
+
+def map_capture_usage_snapshot():
+    config = load_map_capture_config()
+    month = current_map_capture_month()
+    data = read_map_capture_usage()
+    used = int((data.get(month) or {}).get("naverStaticCalls", 0) or 0)
+    limit = int(config.get("naverMonthlyLimit") or NAVER_STATIC_MONTHLY_FREE_LIMIT)
+    remaining = max(0, limit - used) if limit else 0
+    return {
+        "month": month,
+        "used": used,
+        "limit": limit,
+        "remaining": remaining,
+        "naverClientIdSet": bool(config.get("naverClientId")),
+        "naverClientSecretSet": bool(config.get("naverClientSecretSet")),
+        "ncloudBillingKeySet": bool(config.get("ncloudBillingKeySet")),
+    }
+
+
+def increment_map_capture_usage(count=1):
+    month = current_map_capture_month()
+    data = read_map_capture_usage()
+    month_data = data.get(month)
+    if not isinstance(month_data, dict):
+        month_data = {}
+    month_data["naverStaticCalls"] = int(month_data.get("naverStaticCalls", 0) or 0) + int(count)
+    data[month] = month_data
+    write_map_capture_usage(data)
+    return map_capture_usage_snapshot()
+
+
+def fetch_naver_static_map(query):
+    config = load_map_capture_secret_config()
+    client_id = config.get("naverClientId") or ""
+    client_secret = config.get("naverClientSecret") or ""
+    if not client_id or not client_secret:
+        raise ValueError("NAVER_CLIENT_ID와 NAVER_CLIENT_SECRET을 config.py에 입력해야 합니다.")
+
+    lng = clamp_number((query.get("centerLng") or [""])[0], -180, 180, None)
+    lat = clamp_number((query.get("centerLat") or [""])[0], -90, 90, None)
+    if lng is None or lat is None:
+        raise ValueError("centerLng/centerLat 값이 필요합니다.")
+
+    level = clamp_integer((query.get("level") or ["20"])[0], 0, 20, 20)
+    width = clamp_integer((query.get("w") or ["512"])[0], 1, 1024, 512)
+    height = clamp_integer((query.get("h") or ["512"])[0], 1, 1024, 512)
+    scale = clamp_integer((query.get("scale") or ["2"])[0], 1, 2, 2)
+    maptype = safe_text((query.get("maptype") or ["basic"])[0], "basic").lower()
+    if maptype not in {"basic", "traffic", "satellite", "satellite_base", "terrain"}:
+        maptype = "basic"
+
+    params = {
+        "crs": "EPSG:4326",
+        "w": width,
+        "h": height,
+        "center": f"{lng:.12f},{lat:.12f}",
+        "level": level,
+        "maptype": maptype,
+        "format": "png",
+        "scale": scale,
+    }
+    last_error = None
+    for endpoint in NAVER_STATIC_ENDPOINTS:
+        request = Request(
+            f"{endpoint}?{urlencode(params)}",
+            headers={
+                "x-ncp-apigw-api-key-id": client_id,
+                "x-ncp-apigw-api-key": client_secret,
+            },
+        )
+        try:
+            with urlopen(request, timeout=30) as response:
+                content_type = response.headers.get("Content-Type", "image/png")
+                body = response.read()
+            increment_map_capture_usage(1)
+            return body, content_type
+        except HTTPError as error:
+            detail = error.read().decode("utf-8", "replace")
+            last_error = f"HTTP {error.code} {error.reason}: {detail}"
+            continue
+    if last_error:
+        raise RuntimeError(f"네이버 Static Map API 호출 실패: {last_error}")
+    raise RuntimeError("네이버 Static Map API 호출 실패")
+
+
+def clean_search_text(value):
+    text = re.sub(r"<[^>]+>", "", safe_text(value))
+    return html_lib.unescape(text).strip()
+
+
+def naver_local_coord(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if abs(number) > 1000:
+        number = number / 10_000_000
+    return number
+
+
+def fetch_naver_geocode_results(query_text, center_lng=None, center_lat=None):
+    config = load_map_capture_secret_config()
+    client_id = config.get("naverClientId") or ""
+    client_secret = config.get("naverClientSecret") or ""
+    if not client_id or not client_secret:
+        return [], "NAVER_CLIENT_ID와 NAVER_CLIENT_SECRET이 없어 주소 검색을 건너뜁니다."
+
+    params = {
+        "query": query_text,
+        "count": 10,
+    }
+    if center_lng is not None and center_lat is not None:
+        params["coordinate"] = f"{center_lng},{center_lat}"
+    last_error = None
+    for endpoint in NAVER_GEOCODE_ENDPOINTS:
+        request = Request(
+            f"{endpoint}?{urlencode(params)}",
+            headers={
+                "Accept": "application/json",
+                "x-ncp-apigw-api-key-id": client_id,
+                "x-ncp-apigw-api-key": client_secret,
+            },
+        )
+        try:
+            with urlopen(request, timeout=15) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            items = []
+            for index, address in enumerate(payload.get("addresses") or []):
+                lng = clamp_number(address.get("x"), -180, 180, None)
+                lat = clamp_number(address.get("y"), -90, 90, None)
+                if lng is None or lat is None:
+                    continue
+                title = clean_search_text(address.get("roadAddress") or address.get("jibunAddress") or query_text)
+                subtitle = clean_search_text(address.get("jibunAddress") or address.get("roadAddress") or "")
+                items.append({
+                    "id": f"address-{index}",
+                    "source": "address",
+                    "title": title,
+                    "subtitle": subtitle,
+                    "category": "주소",
+                    "address": clean_search_text(address.get("roadAddress") or ""),
+                    "lng": lng,
+                    "lat": lat,
+                })
+            return items, None
+        except HTTPError as error:
+            last_error = error.read().decode("utf-8", "replace")
+            continue
+    return [], last_error
+
+
+def fetch_naver_local_search_results(query_text):
+    config = load_map_capture_secret_config()
+    client_id = config.get("naverLocalSearchClientId") or ""
+    client_secret = config.get("naverLocalSearchClientSecret") or ""
+    if not client_id or not client_secret:
+        return [], "NAVER_LOCAL_SEARCH_CLIENT_ID/SECRET이 없어 장소명 검색을 건너뜁니다.", False
+
+    params = {
+        "query": query_text,
+        "display": 10,
+        "start": 1,
+        "sort": "random",
+    }
+    request = Request(
+        f"{NAVER_LOCAL_SEARCH_ENDPOINT}?{urlencode(params)}",
+        headers={
+            "X-Naver-Client-Id": client_id,
+            "X-Naver-Client-Secret": client_secret,
+        },
+    )
+    try:
+        with urlopen(request, timeout=15) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")
+        return [], f"네이버 지역 검색 실패: HTTP {error.code} {detail}", True
+
+    items = []
+    for index, item in enumerate(payload.get("items") or []):
+        lng = naver_local_coord(item.get("mapx"))
+        lat = naver_local_coord(item.get("mapy"))
+        if lng is None or lat is None:
+            continue
+        if not (-180 <= lng <= 180 and -90 <= lat <= 90):
+            continue
+        title = clean_search_text(item.get("title") or query_text)
+        road = clean_search_text(item.get("roadAddress") or "")
+        jibun = clean_search_text(item.get("address") or "")
+        items.append({
+            "id": f"place-{index}",
+            "source": "place",
+            "title": title,
+            "subtitle": road or jibun,
+            "category": clean_search_text(item.get("category") or "장소"),
+            "address": road or jibun,
+            "lng": lng,
+            "lat": lat,
+            "link": item.get("link") or "",
+            "telephone": clean_search_text(item.get("telephone") or ""),
+        })
+    return items, None, True
+
+
+def dedupe_map_capture_results(results):
+    seen = set()
+    deduped = []
+    for item in results:
+        key = (
+            round(float(item.get("lng", 0)), 6),
+            round(float(item.get("lat", 0)), 6),
+            clean_search_text(item.get("title")).lower(),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        item["id"] = f"result-{len(deduped)}"
+        deduped.append(item)
+    return deduped
+
+
+def search_map_capture_locations(query):
+    query_text = safe_text((query.get("query") or [""])[0]).strip()
+    if not query_text:
+        raise ValueError("검색어를 입력해주세요.")
+    center_lng = clamp_number((query.get("centerLng") or [""])[0], -180, 180, None)
+    center_lat = clamp_number((query.get("centerLat") or [""])[0], -90, 90, None)
+    address_results, address_warning = fetch_naver_geocode_results(query_text, center_lng, center_lat)
+    place_results, place_warning, place_configured = fetch_naver_local_search_results(query_text)
+    results = dedupe_map_capture_results(place_results + address_results)
+    warnings = [message for message in [place_warning, address_warning] if message]
+    return {
+        "results": results,
+        "count": len(results),
+        "localSearchConfigured": place_configured,
+        "warnings": warnings,
+    }
+
+
+def create_ncloud_signature(method, uri_with_query, timestamp, access_key, secret_key):
+    message = f"{method} {uri_with_query}\n{timestamp}\n{access_key}"
+    digest = hmac.new(secret_key.encode("utf-8"), message.encode("utf-8"), hashlib.sha256).digest()
+    return base64.b64encode(digest).decode("utf-8")
+
+
+def month_start_and_today():
+    if ZoneInfo is not None:
+        now = dt.datetime.now(ZoneInfo("Asia/Seoul"))
+    else:
+        now = dt.datetime.now()
+    return now.strftime("%Y%m01"), now.strftime("%Y%m%d"), now.strftime("%Y-%m")
+
+
+def extract_ncloud_billing_matches(payload, keyword):
+    response = payload.get("getContractUsageListByDailyResponse") if isinstance(payload, dict) else {}
+    rows = response.get("contractUsageListByDaily") if isinstance(response, dict) else []
+    if isinstance(rows, dict):
+        rows = [rows]
+    if not isinstance(rows, list):
+        rows = []
+
+    keywords = [safe_text(keyword, "Maps").lower(), "maps", "map", "static"]
+    matches = []
+    total_user_quantity = 0.0
+    for row in rows:
+        text = json.dumps(row, ensure_ascii=False).lower()
+        if not any(k and k in text for k in keywords):
+            continue
+        usage = row.get("usage") if isinstance(row, dict) else {}
+        contract = row.get("contract") if isinstance(row, dict) else {}
+        product = row.get("contractProduct") if isinstance(row, dict) else {}
+        quantity = 0.0
+        if isinstance(usage, dict):
+            raw_quantity = usage.get("userUsageQuantity", usage.get("usageQuantity", 0))
+            try:
+                quantity = float(raw_quantity or 0)
+            except (TypeError, ValueError):
+                quantity = 0.0
+        total_user_quantity += quantity
+        matches.append({
+            "useStartDate": ((row.get("useDate") or {}).get("useStartDate") if isinstance(row, dict) else "") or "",
+            "contractType": ((contract.get("contractType") or {}).get("codeName") if isinstance(contract, dict) else "") or "",
+            "productItemKind": ((product.get("productItemKind") or {}).get("codeName") if isinstance(product, dict) else "") or "",
+            "meteringType": ((usage.get("meteringType") or {}).get("codeName") if isinstance(usage, dict) else "") or "",
+            "quantity": quantity,
+            "unit": ((usage.get("userUnit") or {}).get("codeName") if isinstance(usage, dict) else "") or "",
+        })
+    return matches, total_user_quantity, int(response.get("totalRows", 0) or 0) if isinstance(response, dict) else 0
+
+
+def fetch_ncloud_billing_usage():
+    config = load_map_capture_secret_config()
+    access_key = config.get("ncloudAccessKey") or ""
+    secret_key = config.get("ncloudSecretKey") or ""
+    if not access_key or not secret_key:
+        return {
+            "configured": False,
+            "ok": False,
+            "message": "NCLOUD_ACCESS_KEY와 NCLOUD_SECRET_KEY를 config.py에 입력하면 네이버 산정 사용량을 조회할 수 있습니다.",
+        }
+
+    start_day, end_day, month = month_start_and_today()
+    params = {
+        "useStartDay": start_day,
+        "useEndDay": end_day,
+        "responseFormatType": "json",
+        "pageSize": 1000,
+    }
+    uri_with_query = f"{NCLOUD_BILLING_DAILY_USAGE_URI}?{urlencode(params)}"
+    timestamp = str(int(time.time() * 1000))
+    request = Request(
+        f"{NCLOUD_BILLING_ENDPOINT}{uri_with_query}",
+        headers={
+            "x-ncp-apigw-timestamp": timestamp,
+            "x-ncp-iam-access-key": access_key,
+            "x-ncp-apigw-signature-v2": create_ncloud_signature(
+                "GET",
+                uri_with_query,
+                timestamp,
+                access_key,
+                secret_key,
+            ),
+        },
+    )
+    with urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    api_response = payload.get("getContractUsageListByDailyResponse") if isinstance(payload, dict) else {}
+    if isinstance(api_response, dict) and str(api_response.get("returnCode", "0")) != "0":
+        raise RuntimeError(api_response.get("returnMessage") or "네이버 Cost and Usage API 조회 실패")
+    matches, total_user_quantity, total_rows = extract_ncloud_billing_matches(
+        payload,
+        config.get("ncloudBillingKeyword") or "Maps",
+    )
+    return {
+        "configured": True,
+        "ok": True,
+        "month": month,
+        "totalRows": total_rows,
+        "matchedRows": len(matches),
+        "totalUserUsageQuantity": total_user_quantity,
+        "matches": matches[:50],
+    }
+
 
 from config import KOSIS_API_KEY  # noqa: E402
 from kosis_client import KosisClient  # noqa: E402
@@ -93,7 +575,6 @@ JOB_LOCK = threading.Lock()
 JOB_TTL_SECONDS = 600
 ASSET_VERSION = "20260512-launcher"
 PORTAL_DATA_PATH = ROOT_DIR / "portal" / "data" / "portal-data.json"
-LOCAL_DIR = ROOT_DIR / "local"
 LOCAL_DESK_SETTINGS_PATH = LOCAL_DIR / "local-desk-settings.json"
 OVERTIME_SETTINGS_PATH = LOCAL_DIR / "overtime-journal" / "settings.json"
 GOOGLE_CREDENTIALS_PATH = LOCAL_DIR / "secrets" / "google-calendar-credentials.json"
@@ -1038,6 +1519,18 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
         if path == "/api/map-capture/config":
             self.write_json(load_map_capture_config())
             return
+        if path == "/api/map-capture/search":
+            self.handle_map_capture_search(parsed)
+            return
+        if path == "/api/map-capture/usage":
+            self.write_json(map_capture_usage_snapshot())
+            return
+        if path == "/api/map-capture/naver-billing-usage":
+            self.handle_map_capture_naver_billing_usage()
+            return
+        if path == "/api/map-capture/naver-static":
+            self.handle_map_capture_naver_static(parsed)
+            return
         if path == "/api/report-data/catalog":
             self.handle_report_data_catalog()
             return
@@ -1142,6 +1635,33 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
             self.handle_overtime_collect()
             return
         self.write_json({"error": "Unknown API endpoint"}, status=404)
+
+    def handle_map_capture_naver_static(self, parsed):
+        try:
+            image, content_type = fetch_naver_static_map(parse_qs(parsed.query))
+            self.write_binary(image, content_type or "image/png")
+        except ValueError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=502)
+
+    def handle_map_capture_search(self, parsed):
+        try:
+            self.write_json(search_map_capture_locations(parse_qs(parsed.query)))
+        except ValueError as error:
+            self.write_json({"error": str(error)}, status=400)
+        except Exception as error:
+            self.write_json({"error": str(error)}, status=502)
+
+    def handle_map_capture_naver_billing_usage(self):
+        try:
+            self.write_json(fetch_ncloud_billing_usage())
+        except Exception as error:
+            self.write_json({
+                "configured": True,
+                "ok": False,
+                "message": str(error),
+            }, status=502)
 
     def handle_search(self):
         body = self.read_json_body()
@@ -1688,6 +2208,15 @@ class LocalDeskHandler(SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def write_binary(self, body, content_type, filename=None, status=200):
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        if filename:
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.end_headers()
         self.wfile.write(body)
 
